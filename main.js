@@ -111,7 +111,7 @@ function animate(state) {
 }
 
 // Main function to trigger the page curl transition
-async function curl(htmlContentDiv, nextPageContent, options = {animationSpeed: 0.01, curlTargetAmount: 1.1}) {
+async function curl(element, nextPageContent, options = {animationSpeed: 0.01, curlTargetAmount: 1.1}) {
     let resolve, reject;
     const promise = new Promise((res, rej) => {
         resolve = res;
@@ -155,7 +155,7 @@ async function curl(htmlContentDiv, nextPageContent, options = {animationSpeed: 
         state.renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(state.renderer.domElement);
         
-        // Create plane for red screenshot
+        // Create plane for screenshot
         const planeGeometry = new THREE.PlaneGeometry(FRUSTUM_SIZE * aspect, FRUSTUM_SIZE, 32, 32);
         state.planeMesh = new THREE.Mesh(planeGeometry.clone(), new THREE.MeshBasicMaterial({ 
             transparent: true, 
@@ -179,30 +179,30 @@ async function curl(htmlContentDiv, nextPageContent, options = {animationSpeed: 
         state.renderer.domElement.style.display = 'block';
         
         if (state.logging) console.log("Capturing screenshot from element...");
-        const redCanvas = await html2canvas(htmlContentDiv, { 
+        const canvas = await html2canvas(element, { 
             useCORS: true, 
             logging: state.logging, 
-            width: htmlContentDiv.offsetWidth, 
-            height: htmlContentDiv.offsetHeight, 
+            width: element.offsetWidth, 
+            height: element.offsetHeight, 
             x:0, y:0, 
-            scrollX: -htmlContentDiv.scrollLeft, 
-            scrollY: -htmlContentDiv.scrollTop 
+            scrollX: -element.scrollLeft, 
+            scrollY: -element.scrollTop 
         });
         if (state.logging) console.log("Screenshot captured.");
 
-        // 2. Apply red screenshot to canvas plane
-        const redTexture = new THREE.CanvasTexture(redCanvas);
-        redTexture.needsUpdate = true;
+        // 2. Apply screenshot to canvas plane
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.needsUpdate = true;
         state.planeMesh.material = new THREE.MeshBasicMaterial({ 
-            map: redTexture, 
+            map: texture, 
             transparent: false, 
             side: THREE.DoubleSide
         });
         state.planeMesh.material.opacity = 1;
         if (state.logging) console.log("Screenshot applied to canvas plane.");
 
-        // 3. Switch underlying DOM to blue (it's covered by the canvas)
-        htmlContentDiv.innerHTML = nextPageContent;
+        // 3. Switch underlying DOM to next page (it's covered by the canvas)
+        element.innerHTML = nextPageContent;
         if (state.logging) console.log("Underlying DOM switched to next page content."); 
 
         // 4. Start the animation
