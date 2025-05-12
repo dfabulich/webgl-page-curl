@@ -3,9 +3,7 @@ import { calculateCurledVertexPosition } from './curlMath.js';
 
 const geomWidth = 4;
 const geomHeight = 5.5;
-const curlTargetAmount = 1.5;
-const radius = 0.5;
-const angle = Math.PI / 4;
+const curlTargetAmount = 1.0;
 
 function calculate({
     originalX,
@@ -13,11 +11,9 @@ function calculate({
     amount,
     _geomWidth = geomWidth,
     _geomHeight = geomHeight,
-    _radius = radius,
-    _angle = angle
 }) {
   return calculateCurledVertexPosition(
-    originalX, originalY, _geomWidth, _geomHeight, amount, _radius, _angle
+    originalX, originalY, _geomWidth, _geomHeight, amount
 );
 }
 
@@ -34,7 +30,7 @@ describe('calculateCurledVertexPosition', () => {
     expect(result.z).toBe(0); // Assuming z starts at 0 and amount 0 means no change in z
   });
 
-  it('should lift the bottom-right corner up by more than half geomHeight when amount is half of curlTargetAmount', () => {
+  it('should lift the bottom-right corner up by exactly half geomHeight when amount is half of curlTargetAmount', () => {
 
     const result = calculate({
         originalX: geomWidth / 2, 
@@ -45,7 +41,7 @@ describe('calculateCurledVertexPosition', () => {
     // originalY_bottom_right = -geomHeight / 2.
     // originalY_bottom_right + geomHeight / 2 = 0.
     // So, we expect result.y to be > 0.
-    expect(result.y).toBeGreaterThan(0);
+    expect(result.y).toBe(0);
     
     // For debugging, let's also see what the values are:
     // console.log(`Test: Corner lift check - OriginalY: ${originalY}, ResultY: ${result.y}, ResultZ: ${result.z}`);
@@ -87,6 +83,29 @@ describe('calculateCurledVertexPosition', () => {
     // console.log(`Bottom-Left:  Y=${bottomLeft.y.toFixed(3)},  X=${bottomLeft.x.toFixed(3)},  Z=${bottomLeft.z.toFixed(3)}`);
 
     expect(bottomRight.y).toBeGreaterThan(bottomLeft.y);
+
+    // Assert that the top corners have not moved in X or Y
+    const topRightOriginalX = geomWidth / 2;
+    const topRightOriginalY = geomHeight / 2;
+    const topLeftOriginalX = -geomWidth / 2;
+    const topLeftOriginalY = geomHeight / 2;
+
+    const topRightResult = calculate({
+        originalX: topRightOriginalX,
+        originalY: topRightOriginalY,
+        amount: amount
+    });
+
+    const topLeftResult = calculate({
+        originalX: topLeftOriginalX,
+        originalY: topLeftOriginalY,
+        amount: amount
+    });
+
+    expect(topRightResult.x).toBe(topRightOriginalX);
+    expect(topRightResult.y).toBe(topRightOriginalY);
+    expect(topLeftResult.x).toBe(topLeftOriginalX);
+    expect(topLeftResult.y).toBe(topLeftOriginalY);
   });
 
   // We can add more tests here later
