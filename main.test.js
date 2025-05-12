@@ -66,5 +66,28 @@ describe('calculateCurledVertexPosition', () => {
     
   });
 
+  it('should have the bottom-right corner higher than the bottom-left corner at 25% curl amount', () => {
+    const amount = curlTargetAmount * 0.25;
+
+    const bottomRight = calculate({
+        originalX: geomWidth / 2,
+        originalY: -geomHeight / 2,
+        amount: amount
+    });
+
+    const bottomLeft = calculate({
+        originalX: -geomWidth / 2,
+        originalY: -geomHeight / 2,
+        amount: amount
+    });
+
+    // For debugging
+    // console.log(`Amount: ${amount}`);
+    // console.log(`Bottom-Right: Y=${bottomRight.y.toFixed(3)}, X=${bottomRight.x.toFixed(3)}, Z=${bottomRight.z.toFixed(3)}`);
+    // console.log(`Bottom-Left:  Y=${bottomLeft.y.toFixed(3)},  X=${bottomLeft.x.toFixed(3)},  Z=${bottomLeft.z.toFixed(3)}`);
+
+    expect(bottomRight.y).toBeGreaterThan(bottomLeft.y);
+  });
+
   // We can add more tests here later
 }); 

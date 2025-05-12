@@ -48,6 +48,10 @@ export function calculateCurledVertexPosition(originalX, originalY, geomWidth, g
                 // No additional x-displacement in rotated coords for simple tangent lift
                 delta_x_shape_rotated = 0; 
             }
+
+            // ADDED: Apply an additional push in the x_rotated direction
+            const x_push_factor = 0.8; // Tunable factor for how much the curl 'pushes out'
+            delta_x_shape_rotated += amount * radius * x_push_factor * curlStrengthFalloff;
         }
         
         // Add the specific z-lift that grows with amount (peeling effect)
