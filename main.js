@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { calculateCurledVertexPosition, calculateFlippedVertexPosition } from './curlMath.js';
 
 // Function to store the original positions from a geometry
-function storeOriginalPositions(geometry) {
+function storeOriginalPositions(geometry, logging) {
     const positions = geometry.attributes.position;
     const originalPositions = new Float32Array(positions.count * 3);
     
@@ -13,7 +13,7 @@ function storeOriginalPositions(geometry) {
     }
     
     // Debug: Log first vertex from original store
-    console.log(`Stored original first vertex: (${originalPositions[0].toFixed(2)}, ${originalPositions[1].toFixed(2)}, ${originalPositions[2].toFixed(2)})`);
+    if (logging) console.log(`Stored original first vertex: (${originalPositions[0].toFixed(2)}, ${originalPositions[1].toFixed(2)}, ${originalPositions[2].toFixed(2)})`);
     
     return originalPositions;
 }
@@ -40,29 +40,8 @@ export async function init() {
 
     // Set up the go function to be called later
     window.go = async () => {
-        await curl(htmlContentDiv, blueHTMLBodyContent);
+        await curl(htmlContentDiv, blueHTMLBodyContent, {logging: true});
         console.log("Curl complete.");
-    }
-}
-
-// Handle window resize events
-function onWindowResize(state) {
-    if (!state.camera || !state.renderer) return; // Exit if THREE.js elements aren't initialized
-    
-    const aspect = window.innerWidth / window.innerHeight;
-    state.camera.aspect = aspect;
-    state.camera.updateProjectionMatrix();
-    state.renderer.setSize(window.innerWidth, window.innerHeight);
-
-    // Create new plane with segments for deformation if planeMesh exists
-    if (state.planeMesh) {
-        const newPlaneGeometry = new THREE.PlaneGeometry(FRUSTUM_SIZE * aspect, FRUSTUM_SIZE, 32, 32);
-        state.planeMesh.geometry.dispose();
-        state.planeMesh.geometry = newPlaneGeometry.clone();
-        newPlaneGeometry.dispose();
-        
-        // Store new original positions
-        state.originalVertexPositions = storeOriginalPositions(state.planeMesh.geometry);
     }
 }
 
@@ -76,13 +55,13 @@ function updatePageCurl(state, amount) {
     // Debug: Check if originalVertexPositions is defined
     if (!state.originalVertexPositions) {
         console.error("ERROR: originalVertexPositions is undefined! Creating it now...");
-        state.originalVertexPositions = storeOriginalPositions(geometry);
+        state.originalVertexPositions = storeOriginalPositions(geometry, state.logging);
     }
 
     // Verify we have the correct number of originalVertexPositions 
     if (state.originalVertexPositions.length !== positions.count * 3) {
         console.error(`ERROR: originalVertexPositions.length (${state.originalVertexPositions.length}) doesn't match expected (${positions.count * 3}). Regenerating...`);
-        state.originalVertexPositions = storeOriginalPositions(geometry);
+        state.originalVertexPositions = storeOriginalPositions(geometry, state.logging);
     }
 
     // Use stored original positions for each transformation
@@ -113,7 +92,7 @@ function animate(state) {
     requestAnimationFrame(() => animate(state));
 
     state.curlAmount += state.animationSpeed;
-    console.log(`curlAmount: ${state.curlAmount}`);
+    if (state.logging) console.log(`curlAmount: ${state.curlAmount}`);
 
     try {
         updatePageCurl(
@@ -121,17 +100,12 @@ function animate(state) {
             state.curlAmount
         );
     } catch (error) {
+        state.done = true;
         state.reject(error);
     }
 
     if (state.curlAmount > state.curlTargetAmount) {
-        state.done = true;
-        console.log("Red screenshot curled out. Revealing blue HTML content.");
-        
-        // Remove canvas, revealing the underlying blue HTML content
-        state.renderer.domElement.remove();
-        console.log("Canvas hidden. Revealing final blue HTML content.");
-        
+        state.done = true;        
         state.resolve();
     }
 }
@@ -145,6 +119,7 @@ async function curl(htmlContentDiv, nextPageContent, options = {animationSpeed: 
     });
     const state = {
         done: false,
+        logging: false,
         animationSpeed: 0.01,
         curlTargetAmount: 1.1,
         curlAmount: 0.0,
@@ -156,17 +131,15 @@ async function curl(htmlContentDiv, nextPageContent, options = {animationSpeed: 
         resolve: resolve,
         reject: reject
     };
-    
-    // Store resize handler reference so we can remove it later
-    const resizeHandler = () => onWindowResize(state);
-    
+        
     if (options) {
         state.animationSpeed = options.animationSpeed ?? 0.01;
         state.curlTargetAmount = options.curlTargetAmount ?? 1.1;
+        state.logging = options.logging ?? false;
     }
 
     try {
-        console.log("Starting transition...");
+        if (state.logging) console.log("Starting transition...");
         
         // Initialize THREE.js components
         state.scene = new THREE.Scene();
@@ -200,25 +173,22 @@ async function curl(htmlContentDiv, nextPageContent, options = {animationSpeed: 
         state.scene.add(directionalLight);
         
         // Store original positions
-        state.originalVertexPositions = storeOriginalPositions(state.planeMesh.geometry);
-        
-        // Add window resize event listener
-        window.addEventListener('resize', resizeHandler, false);
-        
+        state.originalVertexPositions = storeOriginalPositions(state.planeMesh.geometry, state.logging);
+                
         // Make canvas visible
         state.renderer.domElement.style.display = 'block';
         
-        console.log("Capturing red screenshot from #html-content...");
+        if (state.logging) console.log("Capturing screenshot from element...");
         const redCanvas = await html2canvas(htmlContentDiv, { 
             useCORS: true, 
-            logging: true, 
+            logging: state.logging, 
             width: htmlContentDiv.offsetWidth, 
             height: htmlContentDiv.offsetHeight, 
             x:0, y:0, 
             scrollX: -htmlContentDiv.scrollLeft, 
             scrollY: -htmlContentDiv.scrollTop 
         });
-        console.log("Red screenshot captured.");
+        if (state.logging) console.log("Screenshot captured.");
 
         // 2. Apply red screenshot to canvas plane
         const redTexture = new THREE.CanvasTexture(redCanvas);
@@ -229,28 +199,18 @@ async function curl(htmlContentDiv, nextPageContent, options = {animationSpeed: 
             side: THREE.DoubleSide
         });
         state.planeMesh.material.opacity = 1;
-        console.log("Red screenshot applied to canvas plane.");
+        if (state.logging) console.log("Screenshot applied to canvas plane.");
 
         // 3. Switch underlying DOM to blue (it's covered by the canvas)
         htmlContentDiv.innerHTML = nextPageContent;
-        console.log("Underlying DOM switched to blue content."); 
+        if (state.logging) console.log("Underlying DOM switched to next page content."); 
 
         // 4. Start the animation
         animate(state); // Start animation loop
         await promise;
-    } catch (error) {
-        console.error("Error in curl function:", error);
-        // Make sure the canvas is removed if we encountered an error
-        if (state.renderer && state.renderer.domElement && state.renderer.domElement.parentNode) {
-            state.renderer.domElement.remove();
-        }
-        throw error; // Re-throw the error to allow the caller to handle it
     } finally {
         // Clean up all resources regardless of success or failure
-        
-        // Remove event listener
-        window.removeEventListener('resize', resizeHandler);
-        
+                
         // Clean up THREE.js resources
         if (state.planeMesh) {
             if (state.planeMesh.geometry) state.planeMesh.geometry.dispose();
@@ -258,26 +218,11 @@ async function curl(htmlContentDiv, nextPageContent, options = {animationSpeed: 
                 if (state.planeMesh.material.map) state.planeMesh.material.map.dispose();
                 state.planeMesh.material.dispose();
             }
+            state.planeMesh = null;
         }
         
         if (state.scene) {
-            // Remove and dispose of all objects from the scene
-            while (state.scene.children.length > 0) {
-                const object = state.scene.children[0];
-                if (object.geometry) object.geometry.dispose();
-                if (object.material) {
-                    if (Array.isArray(object.material)) {
-                        object.material.forEach(material => {
-                            if (material.map) material.map.dispose();
-                            material.dispose();
-                        });
-                    } else {
-                        if (object.material.map) object.material.map.dispose();
-                        object.material.dispose();
-                    }
-                }
-                state.scene.remove(object);
-            }
+            state.scene = null;
         }
         
         // Dispose of renderer
@@ -287,15 +232,14 @@ async function curl(htmlContentDiv, nextPageContent, options = {animationSpeed: 
             if (state.renderer.domElement && state.renderer.domElement.parentNode) {
                 state.renderer.domElement.remove();
             }
+            state.renderer = null;
         }
-        
-        // Clear all references
+
+        state.done = true;
         state.scene = null;
         state.camera = null;
-        state.renderer = null;
-        state.planeMesh = null;
         state.originalVertexPositions = null;
         
-        console.log("All resources cleaned up");
+        if (state.logging) console.log("All resources cleaned up");
     }
 }
