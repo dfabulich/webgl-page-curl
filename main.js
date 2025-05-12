@@ -1,4 +1,3 @@
-import * as THREE from 'three';
 import { calculateCurledVertexPosition, calculateFlippedVertexPosition } from './curlMath.js';
 
 // Function to store the original positions from a geometry
@@ -102,6 +101,7 @@ export async function captureScreenshotOfParentElement(element, html2canvas, opt
  * Performs a page curl transition on an element.
  * 
  * @param {Object} args - The arguments object.
+ * @param {Object} args.THREE - The THREE.js library.
  * @param {HTMLElement} args.element - The element to apply the curl effect to.
  * @param {HTMLCanvasElement} args.screenshotCanvas - The canvas containing the screenshot of the element.
  * @param {(string|Function)} args.nextPageContent - HTML string or function to update the element content after curl.
@@ -113,6 +113,9 @@ export async function captureScreenshotOfParentElement(element, html2canvas, opt
  */
 export async function curl(args) {
     // Validate required arguments
+    if (!args.THREE) {
+        throw new Error("Missing required argument: THREE (THREE.js library)");
+    }
     if (!args.element) {
         throw new Error("Missing required argument: element");
     }
@@ -123,7 +126,7 @@ export async function curl(args) {
         throw new Error("Missing required argument: nextPageContent");
     }
 
-    const { element, screenshotCanvas, nextPageContent } = args;
+    const { THREE, element, screenshotCanvas, nextPageContent } = args;
 
     let resolve, reject;
     const promise = new Promise((res, rej) => {

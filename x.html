@@ -28,6 +28,7 @@
         }
     </script>
     <script type="module">
+        import * as THREE from 'three';
         import { curl, captureScreenshotOfParentElement } from './main.js';
         // The 'go' function will be attached to the window object by the init() function from main.js
         const htmlContentDiv = document.getElementById('html-content');
@@ -52,10 +53,11 @@
         window.go = async () => {
             const screenshotCanvas = await captureScreenshotOfParentElement(htmlContentDiv, html2canvas, {logging: true});
             await curl({
+                THREE: THREE,
                 element: htmlContentDiv,
                 screenshotCanvas: screenshotCanvas,
                 nextPageContent: blueHTMLBodyContent,
-                logging: true,
+                logging: true
             });
             console.log("Curl complete.");
         }
