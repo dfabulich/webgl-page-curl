@@ -18,7 +18,8 @@ function storeOriginalPositions(geometry, logging) {
 }
 
 // Function to deform the plane geometry for the curl effect
-function updatePageCurl(state, amount) {
+function updatePageCurl(state) {
+    const amount = state.curlAmount;
     const geometry = state.planeMesh.geometry;
     const positions = geometry.attributes.position;
     const geomWidth = geometry.parameters.width;
@@ -64,10 +65,7 @@ function animate(state) {
     if (state.logging) console.log(`curlAmount: ${state.curlAmount}`);
 
     try {
-        updatePageCurl(
-            state, 
-            state.curlAmount
-        );
+        updatePageCurl(state);
     } catch (error) {
         state.done = true;
         state.reject(error);
