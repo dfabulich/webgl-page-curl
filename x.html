@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Three.JS Page Curl</title>
+    <style>
+        body { margin: 0; overflow: hidden; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+    <script type="module">
+        import * as THREE from 'three';
+
+        let scene, camera, renderer;
+        let planeMesh;
+        let bluePlaneMesh; // For the rectangle behind
+
+        function init() {
+            // Scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x111111); // Dark background
+
+            // Camera (Orthographic for simple screen fill)
+            const aspect = window.innerWidth / window.innerHeight;
+            const frustumSize = 5; // Arbitrary size, will be used to size the plane
+            camera = new THREE.OrthographicCamera(
+                frustumSize * aspect / -2,
+                frustumSize * aspect / 2,
+                frustumSize / 2,
+                frustumSize / -2,
+                0.1,
+                100
+            );
+            camera.position.z = 1; // Position the camera
+
+            // Renderer
+            renderer = new THREE.WebGLRenderer();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.body.appendChild(renderer.domElement);
+
+            // Plane Geometry (sized to fill camera view)
+            const planeGeometry = new THREE.PlaneGeometry(frustumSize * aspect, frustumSize);
+            
+            // Plane Material (red)
+            const planeMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+            
+            planeMesh = new THREE.Mesh(planeGeometry, planeMaterial);
+            // planeMesh.position.z = 0; // Default is 0, red is in front
+            scene.add(planeMesh);
+
+            // Blue Plane Geometry (behind the red one)
+            const bluePlaneMaterial = new THREE.MeshBasicMaterial({ color: 0x0000ff });
+            bluePlaneMesh = new THREE.Mesh(planeGeometry.clone(), bluePlaneMaterial); // Use clone for geometry
+            bluePlaneMesh.position.z = -0.1; // Position it slightly behind the red plane
+            scene.add(bluePlaneMesh);
+
+            // Handle window resize
+            window.addEventListener('resize', onWindowResize, false);
+
+            // Initial render
+            renderer.render(scene, camera);
+
+            // Expose the go function to the window object
+            window.go = function() {
+                if (planeMesh && scene.children.includes(planeMesh)) {
+                    scene.remove(planeMesh);
+                    planeMesh.geometry.dispose();
+                    planeMesh.material.dispose();
+                    planeMesh = null; // Clear reference
+                    renderer.render(scene, camera); // Re-render the scene
+                    console.log("Red rectangle removed.");
+                } else {
+                    console.log("Red rectangle already removed or not found.");
+                }
+            };
+        }
+
+        function onWindowResize() {
+            const aspect = window.innerWidth / window.innerHeight;
+            const frustumSize = 5;
+
+            camera.left = frustumSize * aspect / -2;
+            camera.right = frustumSize * aspect / 2;
+            camera.top = frustumSize / 2;
+            camera.bottom = frustumSize / -2;
+            camera.updateProjectionMatrix();
+
+            // Also update plane geometry if you want it to always fill the screen exactly
+            // For now, the initial size will stretch/squash with aspect change, which is fine for a simple rectangle.
+            // If exact fill is needed on resize without distortion, the plane geometry needs an update too.
+            // planeMesh.geometry.dispose();
+            // planeMesh.geometry = new THREE.PlaneGeometry(frustumSize * aspect, frustumSize);
+
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.render(scene, camera); // Re-render on resize
+        }
+
+        init();
+    </script>
+</body>
+</html>
