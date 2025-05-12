@@ -12,8 +12,6 @@ let blueHTMLBodyContent = '';
 const FRUSTUM_SIZE = 5;
 let curlParameters = {
     curlAmount: 0.0, // 0 (flat) to target value (e.g., 1.0 or 1.5 for full curl and move away)
-    curlRadius: 0.5, 
-    curlAngle: Math.PI / 4, // Angle of the curl axis (45 degrees for bottom-right curl)
     animationSpeed: 0.01,
     curlTargetAmount: 1.1 // Value of curlAmount to consider animation complete
 };
@@ -79,7 +77,7 @@ function onWindowResize() {
 }
 
 // Function to deform the plane geometry for the curl effect
-function updatePageCurl(planeMesh, amount, radius, angle) {
+function updatePageCurl(planeMesh, amount) {
     const geometry = planeMesh.geometry;
     const positions = geometry.attributes.position;
     const geomWidth = geometry.parameters.width;
@@ -132,9 +130,7 @@ function animate() {
 
         updatePageCurl(
             planeMesh, 
-            curlParameters.curlAmount, 
-            curlParameters.curlRadius, 
-            curlParameters.curlAngle
+            curlParameters.curlAmount
         );
 
         if (curlParameters.curlAmount > curlParameters.curlTargetAmount) {
