@@ -41,11 +41,11 @@ const screenshotCanvas = await captureScreenshotOfParentElement(element, html2ca
 
 If you find another/better way to take a screenshot instead of `html2canvas`, feel free to use it, passing your screenshot to the `curl()` function.
 
-### Prerequisite: Set up a curl container
+### Prerequisite: Ensure the parent element is a curl container
 
-The element you're curling must have a curl container, which will either be the `document.body` or any element with `position: relative`.
+The element you're curling must have a "curl container" parent element. The parent can either be the `document.body` or any element with `position: relative`.
 
-(The parent element must use `position: relative` because we'll position the curl `<canvas>` with `position: absolute` relative to your element's parent.)
+(If the parent isn't the body, then parent element must use `position: relative`, because we'll position the curl `<canvas>` with `position: absolute` relative to your element's parent.)
 
 # Curling the page
 
