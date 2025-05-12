@@ -10,26 +10,19 @@
             width: 100vw; 
             height: 100vh; 
             position: relative; 
+            overflow: hidden;
             z-index: 1;
             display: flow-root; /* Prevent child margins from collapsing outside */
-        }
-        /* Canvas will overlay html-content */
-        canvas {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            z-index: 2; /* Ensure canvas is on top of html-content */
-            /* display: block; by default, or can be set in JS */
         }
     </style>
     <!-- html2canvas library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.js"></script>
 </head>
 <body>
-    <div id="html-content"></div>
-    <!-- Three.js canvas will be appended here by JS -->
+    <div id="curl-container">
+        <div id="html-content"></div>
+        <!-- Canvas will be appended here by JS -->
+    </div>
 
     <script type="importmap">
         {

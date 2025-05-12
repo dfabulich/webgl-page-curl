@@ -44,12 +44,10 @@ function updatePageCurl(state, amount) {
         const y = state.originalVertexPositions[i * 3 + 1];
         const z = state.originalVertexPositions[i * 3 + 2]; // Usually 0 for a fresh PlaneGeometry
         
-        // Apply the curl transformation using our function
         const newPosition = calculateCurledVertexPosition(
             x, y, geomWidth, geomHeight, amount
         );
         
-        // Write transformed position back to mesh
         positions.setXYZ(i, newPosition.x, newPosition.y, newPosition.z);
     }
     
@@ -61,7 +59,6 @@ function updatePageCurl(state, amount) {
 // Animation loop
 function animate(state) {
     if (state.done) return;
-    // Always request animation frame while animating
     requestAnimationFrame(() => animate(state));
 
     state.curlAmount += state.animationSpeed;
@@ -113,7 +110,6 @@ export async function curl(element, nextPageContent, options = {animationSpeed: 
     try {
         if (state.logging) console.log("Starting transition...");
         
-        // Initialize THREE.js components
         state.scene = new THREE.Scene();
         const aspect = window.innerWidth / window.innerHeight;
         const fov = 75; // Field of View
@@ -125,7 +121,26 @@ export async function curl(element, nextPageContent, options = {animationSpeed: 
         state.renderer = new THREE.WebGLRenderer({ alpha: true }); 
         state.renderer.setPixelRatio(window.devicePixelRatio);
         state.renderer.setSize(window.innerWidth, window.innerHeight);
-        document.body.appendChild(state.renderer.domElement);
+        element.parentNode.appendChild(state.renderer.domElement);
+        
+        // Style the canvas element
+        const canvasElement = state.renderer.domElement;
+        
+        // Calculate appropriate z-index
+        const elementZIndex = parseInt(window.getComputedStyle(element).zIndex) || 0;
+        const canvasZIndex = isNaN(elementZIndex) ? 2 : elementZIndex + 1;
+        
+        // Set all necessary styles directly on canvas
+        Object.assign(canvasElement.style, {
+            position: 'fixed',
+            top: '0',
+            left: '0',
+            right: '100%',
+            height: '100%',
+            zIndex: canvasZIndex.toString(),
+            pointerEvents: 'none', // Allow clicks to pass through
+            backgroundColor: 'transparent'
+        });
         
         // Create plane for screenshot
         const planeGeometry = new THREE.PlaneGeometry(FRUSTUM_SIZE * aspect, FRUSTUM_SIZE, 32, 32);
