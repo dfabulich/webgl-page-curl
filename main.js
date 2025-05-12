@@ -6,15 +6,11 @@ let scene, camera, renderer;
 let planeMesh; // Holds red screenshot
 let originalVertexPositions; // Array to store original vertex positions
 let isAnimatingRedPlaneOut = false;
-let redHTMLBodyContent = '';
-let blueHTMLBodyContent = '';
+let curlAmount = 0.0;
+let animationSpeed = 0.01;
+let curlTargetAmount = 1.1;
 
 const FRUSTUM_SIZE = 5;
-let curlParameters = {
-    curlAmount: 0.0, // 0 (flat) to target value (e.g., 1.0 or 1.5 for full curl and move away)
-    animationSpeed: 0.01,
-    curlTargetAmount: 1.1 // Value of curlAmount to consider animation complete
-};
 
 // Function to store the original positions from a geometry
 function storeOriginalPositions(geometry) {
@@ -36,6 +32,8 @@ function storeOriginalPositions(geometry) {
 // Initialize only HTML content, not THREE.js
 export async function init() {
     const htmlContentDiv = document.getElementById('html-content');
+    let redHTMLBodyContent = '';
+    let blueHTMLBodyContent = '';
     try {
         const redResponse = await fetch('red.html');
         if (!redResponse.ok) throw new Error(`HTTP error loading red.html: ${redResponse.status}`);
@@ -52,7 +50,9 @@ export async function init() {
     }
 
     // Set up the go function to be called later
-    window.go = go;
+    window.go = async () => {
+        return curl(htmlContentDiv, blueHTMLBodyContent);
+    }
 }
 
 // Handle window resize events
@@ -125,15 +125,15 @@ function animate() {
     requestAnimationFrame(animate);
 
     if (planeMesh) {
-        curlParameters.curlAmount += curlParameters.animationSpeed;
-        console.log(`curlParameters.curlAmount: ${curlParameters.curlAmount}`);
+        curlAmount += animationSpeed;
+        console.log(`curlAmount: ${curlAmount}`);
 
         updatePageCurl(
             planeMesh, 
-            curlParameters.curlAmount
+            curlAmount
         );
 
-        if (curlParameters.curlAmount > curlParameters.curlTargetAmount) {
+        if (curlAmount > curlTargetAmount) {
             console.log("Red screenshot curled out. Revealing blue HTML content.");
             if (planeMesh.material.map) planeMesh.material.map.dispose();
             planeMesh.material.dispose();
@@ -142,7 +142,6 @@ function animate() {
             
             // Hide canvas, revealing the underlying blue HTML content
             renderer.domElement.style.display = 'none'; 
-            document.getElementById('html-content').innerHTML = blueHTMLBodyContent;
             console.log("Canvas hidden. Revealing final blue HTML content.");
 
             isAnimatingRedPlaneOut = false;
@@ -159,7 +158,7 @@ function animate() {
                 camera = null;
             }
             originalVertexPositions = null;
-            curlParameters.curlAmount = 0.0; // Reset for next time
+            curlAmount = 0.0; // Reset for next time
         }
     }
     
@@ -169,14 +168,16 @@ function animate() {
 }
 
 // Main function to trigger the page curl transition
-async function go() {
+async function curl(htmlContentDiv, nextPageContent, options = {animationSpeed: 0.01, curlTargetAmount: 1.1}) {
+    if (options) {
+        animationSpeed = options.animationSpeed ?? 0.01;
+        curlTargetAmount = options.curlTargetAmount ?? 1.1;
+    }
     if (isAnimatingRedPlaneOut) {
         console.log("Animation already in progress.");
         return;
     }
 
-    const htmlContentDiv = document.getElementById('html-content');
-    
     try {
         console.log("Starting transition...");
         
@@ -219,9 +220,6 @@ async function go() {
         // Make canvas visible
         renderer.domElement.style.display = 'block';
         
-        // 1. Capture red screenshot (from visible html-content)
-        htmlContentDiv.innerHTML = redHTMLBodyContent; // Ensure red is showing
-        await new Promise(resolve => requestAnimationFrame(resolve)); // Allow DOM to update if needed
         console.log("Capturing red screenshot from #html-content...");
         const redCanvas = await html2canvas(htmlContentDiv, { 
             useCORS: true, 
@@ -246,17 +244,16 @@ async function go() {
         console.log("Red screenshot applied to canvas plane.");
 
         // 3. Switch underlying DOM to blue (it's covered by the canvas)
-        htmlContentDiv.innerHTML = blueHTMLBodyContent;
+        htmlContentDiv.innerHTML = nextPageContent;
         console.log("Underlying DOM switched to blue content."); 
 
         // 4. Start the animation
         isAnimatingRedPlaneOut = true;
-        curlParameters.curlAmount = 0.0; // Reset curl amount
+        curlAmount = 0.0; // Reset curl amount
         animate(); // Start animation loop
         
     } catch (error) {
-        console.error("Error in go function:", error);
-        htmlContentDiv.innerHTML = redHTMLBodyContent; // Restore red content
+        console.error("Error in go function:", error); // Restore red content
         if (renderer) renderer.domElement.style.display = 'none'; // Hide canvas on error
         
         // Clean up resources on error
