@@ -6,10 +6,16 @@
     <title>Three.JS Page Curl</title>
     <style>
         body { margin: 0; overflow: hidden; }
-        canvas { display: block; }
+        /* Canvas initially hidden */
+        canvas { display: none; }
+        #html-content { width: 100vw; height: 100vh; }
     </style>
+    <!-- html2canvas library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body>
+    <div id="html-content"></div>
+
     <script type="importmap">
         {
             "imports": {
@@ -22,67 +28,119 @@
         import * as THREE from 'three';
 
         let scene, camera, renderer;
-        let planeMesh; // Red plane
-        let bluePlaneMesh; // Blue plane
+        let planeMesh; // Will hold the screenshot
+        let bluePlaneMesh; // Blue plane as background
 
-        const FRUSTUM_SIZE = 5; // Define frustum size at a higher scope
+        const FRUSTUM_SIZE = 5; 
         let isAnimatingRedPlaneOut = false;
-        let animationFrameId = null;
+        // let animationFrameId = null; // requestAnimationFrame handle not strictly needed if not cancelling
 
-        function init() {
-            // Scene
+        async function init() {
+            // 1. Load red.html content
+            try {
+                const response = await fetch('red.html');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const htmlText = await response.text();
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(htmlText, 'text/html');
+                document.getElementById('html-content').innerHTML = doc.body.innerHTML;
+                // Apply body styles from red.html to our main body if needed, or ensure red.html styles are self-contained.
+                // For simplicity, we assume red.html's body style applies within its own context.
+            } catch (error) {
+                console.error("Error loading red.html:", error);
+                document.getElementById('html-content').innerHTML = '<p style="color:red;">Error loading content.</p>';
+            }
+
+            // 2. Setup Three.JS scene (canvas is initially hidden by CSS)
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x111111); // Dark background
+            // No scene background color, as it will be covered by blue plane or DOM
 
-            // Camera (Orthographic for simple screen fill)
             const aspect = window.innerWidth / window.innerHeight;
             camera = new THREE.OrthographicCamera(
                 FRUSTUM_SIZE * aspect / -2,
                 FRUSTUM_SIZE * aspect / 2,
                 FRUSTUM_SIZE / 2,
                 FRUSTUM_SIZE / -2,
-                0.1,
+                0.01, // Adjusted near plane for screenshot texture
                 100
             );
-            camera.position.z = 1;
+            camera.position.z = 1; 
 
-            // Renderer
-            renderer = new THREE.WebGLRenderer();
+            renderer = new THREE.WebGLRenderer({ alpha: true }); // alpha true for potential transparency
             renderer.setSize(window.innerWidth, window.innerHeight);
-            document.body.appendChild(renderer.domElement);
+            document.body.appendChild(renderer.domElement); // Appended, but display:none from CSS
 
-            // Plane Geometry (sized to fill camera view)
-            // Shared geometry for initial setup, though blue plane clones it.
+            // Screenshot Plane (initially no texture or transparent)
             const planeGeometry = new THREE.PlaneGeometry(FRUSTUM_SIZE * aspect, FRUSTUM_SIZE);
-            
-            // Red Plane Material
-            const planeMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+            const planeMaterial = new THREE.MeshBasicMaterial({
+                // color: 0xff0000, // No longer solid red
+                transparent: true, 
+                opacity: 0 // Initially invisible, will get texture
+            });
             planeMesh = new THREE.Mesh(planeGeometry, planeMaterial);
+            planeMesh.position.z = 0; // In front of blue plane
             scene.add(planeMesh);
 
-            // Blue Plane (behind the red one)
+            // Blue Plane (background for WebGL view)
             const bluePlaneMaterial = new THREE.MeshBasicMaterial({ color: 0x0000ff });
-            bluePlaneMesh = new THREE.Mesh(planeGeometry.clone(), bluePlaneMaterial);
+            // Use a fresh geometry for the blue plane to avoid issues if red plane geometry is modified
+            const bluePlaneGeometry = new THREE.PlaneGeometry(FRUSTUM_SIZE * aspect, FRUSTUM_SIZE);
+            bluePlaneMesh = new THREE.Mesh(bluePlaneGeometry, bluePlaneMaterial);
             bluePlaneMesh.position.z = -0.1; 
             scene.add(bluePlaneMesh);
 
-            // Handle window resize
             window.addEventListener('resize', onWindowResize, false);
 
-            // Expose the go function to the window object
-            window.go = function() {
-                if (planeMesh && !isAnimatingRedPlaneOut) {
+            window.go = async function() {
+                if (isAnimatingRedPlaneOut || !planeMesh) {
+                    console.log("Animation in progress or plane already gone.");
+                    return;
+                }
+
+                try {
+                    console.log("Capturing screenshot...");
+                    const canvas = await html2canvas(document.documentElement, { 
+                        useCORS: true, // If red.html had external images
+                        logging: false,
+                        width: window.innerWidth, // Ensure consistent capture size
+                        height: window.innerHeight,
+                        x: 0, // Capture from top-left
+                        y: 0,
+                        scrollX: -window.scrollX, // Account for page scroll
+                        scrollY: -window.scrollY
+                    });
+                    console.log("Screenshot captured.");
+
+                    // Hide HTML content, show Three.js canvas
+                    document.getElementById('html-content').style.display = 'none';
+                    renderer.domElement.style.display = 'block';
+                    
+                    // Ensure renderer and camera are up to date if a resize happened just before go()
+                    onWindowResize(); 
+
+                    const texture = new THREE.CanvasTexture(canvas);
+                    texture.needsUpdate = true;
+
+                    // Dispose of old material if it exists and has a map
+                    if (planeMesh.material.map) {
+                        planeMesh.material.map.dispose();
+                    }
+                    planeMesh.material.dispose();
+
+                    planeMesh.material = new THREE.MeshBasicMaterial({ map: texture, transparent: true });
+                    planeMesh.material.opacity = 1; // Make it visible
+                    planeMesh.position.y = 0; // Reset position before animation
+
                     isAnimatingRedPlaneOut = true;
-                    console.log("Starting animation for red rectangle.");
-                    // The animation loop is already running, so just setting the flag is enough.
-                } else if (!planeMesh) {
-                    console.log("Red rectangle already removed.");
-                } else if (isAnimatingRedPlaneOut) {
-                    console.log("Red rectangle animation already in progress.");
+                    console.log("Starting screenshot animation.");
+
+                } catch (error) {
+                    console.error("Error in go function:", error);
                 }
             };
 
-            // Start the animation loop
             animate();
         }
 
@@ -95,8 +153,10 @@
             camera.bottom = FRUSTUM_SIZE / -2;
             camera.updateProjectionMatrix();
 
-            // Update plane geometries if they need to change aspect ratio
-            if (planeMesh) { // Check if red plane still exists
+            renderer.setSize(window.innerWidth, window.innerHeight);
+
+            // Update plane geometries
+            if (planeMesh) {
                 planeMesh.geometry.dispose();
                 planeMesh.geometry = new THREE.PlaneGeometry(FRUSTUM_SIZE * aspect, FRUSTUM_SIZE);
             }
@@ -104,35 +164,34 @@
                 bluePlaneMesh.geometry.dispose();
                 bluePlaneMesh.geometry = new THREE.PlaneGeometry(FRUSTUM_SIZE * aspect, FRUSTUM_SIZE);
             }
-            
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            // No explicit render here, animate loop handles it
         }
 
         function animate() {
-            animationFrameId = requestAnimationFrame(animate);
+            requestAnimationFrame(animate);
 
             if (isAnimatingRedPlaneOut && planeMesh) {
                 planeMesh.position.y += 0.05; // Animation speed
+                // Adjust opacity for a fade-out effect if desired
+                // planeMesh.material.opacity -= 0.01; 
 
-                // Check if the red plane is out of view
-                // Its origin is at its center, height is FRUSTUM_SIZE.
-                // Bottom edge of plane = planeMesh.position.y - (FRUSTUM_SIZE / 2)
-                // If bottom edge > camera.top, it's out of view
-                if ((planeMesh.position.y - FRUSTUM_SIZE / 2) > camera.top) {
-                    scene.remove(planeMesh);
-                    planeMesh.geometry.dispose();
+                if ((planeMesh.position.y - FRUSTUM_SIZE / 2) > camera.top /* || planeMesh.material.opacity <= 0 */) {
+                    if (planeMesh.material.map) {
+                        planeMesh.material.map.dispose();
+                    }
                     planeMesh.material.dispose();
+                    scene.remove(planeMesh);
                     planeMesh = null; 
                     isAnimatingRedPlaneOut = false;
-                    console.log("Red rectangle animated out and removed.");
+                    console.log("Screenshot animated out and removed.");
+                    // Now the blue plane is visible. 
+                    // Here you could trigger loading blue.html content if desired for a next step.
                 }
             }
-
             renderer.render(scene, camera);
         }
 
         init();
+
     </script>
 </body>
 </html>
