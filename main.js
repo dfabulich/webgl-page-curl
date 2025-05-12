@@ -1,4 +1,4 @@
-import { calculateCurledVertexPosition, calculateFlippedVertexPosition } from './curlMath.js';
+import { calculateCurledVertexPosition } from './curlMath.js';
 
 // Function to store the original positions from a geometry
 function storeOriginalPositions(geometry, logging) {

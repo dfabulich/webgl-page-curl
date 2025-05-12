@@ -88,34 +88,3 @@ export function calculateCurledVertexPosition(originalX, originalY, geomWidth, g
 
     return { x: final_x, y: final_y, z: final_z };
 }
-
-export function calculateFlippedVertexPosition(originalX, originalY, geomWidth, geomHeight, amount, i) {
-    // amount = 0: 0 degrees rotation
-    // amount = 0.5: 90 degrees rotation (PI/2)
-    // amount = 1.0: 180 degrees rotation (PI)
-    const flip_angle = amount * Math.PI;
-    
-    // Find the center of the plane geometry
-    const centerX = 0; // Assuming the plane's local origin is at its center in Three.js
-    
-    // Offset the point from the center
-    const relativeX = originalX - centerX;
-    
-    // Standard 2D rotation formulas around Y-axis through the center
-    // For a point (x, z) rotating around center by angle A:
-    // x' = x * cos(A) - z * sin(A)
-    // z' = x * sin(A) + z * cos(A)
-    const rotatedX = relativeX * Math.cos(flip_angle);
-    const rotatedZ = relativeX * Math.sin(flip_angle);
-    
-    // Then translate back to world-space
-    const new_x = rotatedX + centerX;
-    const new_y = originalY; // Y is the axis of rotation, so it doesn't change
-    const new_z = rotatedZ;
-
-    if (i == 0) {
-        //console.log(`originalX: ${originalX}, originalY: ${originalY}, new_x: ${new_x}, new_y: ${new_y}, new_z: ${new_z}`);
-    }
-    
-    return { x: new_x, y: new_y, z: new_z };
-} 
