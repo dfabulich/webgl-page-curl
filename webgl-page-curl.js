@@ -1,72 +1,211 @@
-import { calculateCurledVertexPosition } from './curlMath.js';
+const vertexShaderSource = `
+varying vec2 vUv;
 
-// Function to store the original positions from a geometry
-function storeOriginalPositions(geometry, logging) {
-  const positions = geometry.attributes.position;
-  const originalPositions = new Float32Array(positions.count * 3);
+void main() {
+  vUv = uv;
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+}
+`;
 
-  for (let i = 0; i < positions.count; i++) {
-    originalPositions[i * 3] = positions.getX(i);
-    originalPositions[i * 3 + 1] = positions.getY(i);
-    originalPositions[i * 3 + 2] = positions.getZ(i);
-  }
+const fragmentShaderSource = `
+#define PI 3.14159265359
 
-  // Debug: Log first vertex from original store
-  if (logging)
-    console.log(
-      `Stored original first vertex: (${originalPositions[0].toFixed(2)}, ${originalPositions[1].toFixed(2)}, ${originalPositions[2].toFixed(2)})`
-    );
+uniform vec2 resolution;      // Viewport resolution (not strictly needed for this logic)
+uniform float curlAmount;     // Animation progress (0.0 to 1.0+, determines curl position)
+uniform float radius;         // Curl radius
+uniform sampler2D frontTexture; // Texture for the front of the page
 
-  return originalPositions;
+varying vec2 vUv; // Input UV coordinates [0,1]x[0,1]
+
+// Function to check if UV coordinates are within the page bounds [0,1]
+bool isInBounds(vec2 uvCoords) {
+    return uvCoords.x >= 0.0 && uvCoords.x <= 1.0 && uvCoords.y >= 0.0 && uvCoords.y <= 1.0;
 }
 
-// Function to deform the plane geometry for the curl effect
-function updatePageCurl(state) {
-  const amount = state.curlAmount;
-  const geometry = state.planeMesh.geometry;
-  const positions = geometry.attributes.position;
-  const geomWidth = geometry.parameters.width;
-  const geomHeight = geometry.parameters.height;
+void main() {
 
-  // Debug: Check if originalVertexPositions is defined
-  if (!state.originalVertexPositions) {
-    console.error('ERROR: originalVertexPositions is undefined! Creating it now...');
-    state.originalVertexPositions = storeOriginalPositions(geometry, state.logging);
-  }
+    // --- 1. Define Curl Geometry based on curlAmount ---
 
-  // Verify we have the correct number of originalVertexPositions
-  if (state.originalVertexPositions.length !== positions.count * 3) {
-    console.error(
-      `ERROR: originalVertexPositions.length (${state.originalVertexPositions.length}) doesn't match expected (${positions.count * 3}). Regenerating...`
-    );
-    state.originalVertexPositions = storeOriginalPositions(geometry, state.logging);
-  }
+    // Define the start and end points of the curl path in UV space
+    vec2 curlStartPos = vec2(1.0, 0.0); // Bottom-Right corner
+    vec2 curlEndTargetPos = vec2(0.0, 1.0); // Top-Left corner
 
-  // Use stored original positions for each transformation
-  for (let i = 0; i < positions.count; i++) {
-    // Read from originalVertexPositions instead of current positions
-    const x = state.originalVertexPositions[i * 3];
-    const y = state.originalVertexPositions[i * 3 + 1];
-    const z = state.originalVertexPositions[i * 3 + 2]; // Usually 0 for a fresh PlaneGeometry
+    // Vector representing the full direction and length of the curl animation path
+    vec2 curlPathVector = curlEndTargetPos - curlStartPos; // (-1.0, 1.0)
+    float curlPathLength = length(curlPathVector); // sqrt(2)
+    vec2 curlPathDir = normalize(curlPathVector); // Direction from BR to TL
 
-    const newPosition = calculateCurledVertexPosition(x, y, geomWidth, geomHeight, amount);
+    // Calculate the current position of the center of the curl axis based on curlAmount
+    // This corresponds to 'dragPos' or 'mouse' in Andrew's examples.
+    float curlProgressDist = curlAmount * curlPathLength;
+    vec2 curlAxisPos = curlStartPos + curlPathDir * curlProgressDist;
 
-    positions.setXYZ(i, newPosition.x, newPosition.y, newPosition.z);
-  }
+    // Define the reference direction for distance calculations.
+    // This points FROM the curlAxisPos back TOWARDS the curlStartPos.
+    // Equivalent to Andrew's 'dir' or 'mouseDir'.
+    // Note: If curlAmount is 0, curlAxisPos = curlStartPos, making this a zero vector.
+    // We handle this edge case later, but for calculations assume curlAmount > 0.
+    // If curlAmount > 0, this is simply the opposite of curlPathDir.
+    vec2 axisReferenceDir = -curlPathDir; // normalize(curlStartPos - curlAxisPos) simplified
 
-  positions.needsUpdate = true;
-  geometry.computeVertexNormals();
-  state.renderer.render(state.scene, state.camera);
+    // --- 2. Calculate Origin Point on Edge ---
+
+    // Find the point where the axisReferenceDir line, starting from curlAxisPos,
+    // intersects the top edge of the page (y = 1.0).
+    // This is Andrew's 'origin'.
+
+    // Vertical distance from curlAxisPos to the top edge (y=1)
+    float vertDistToEdge = 1.0 - curlAxisPos.y;
+
+    // Calculate how many steps along axisReferenceDir are needed to cover that vertical distance.
+    // Avoid division by zero if axisReferenceDir.y is zero (shouldn't happen for BR->TL curl)
+    float stepsToEdge = 0.0;
+    if (abs(axisReferenceDir.y) > 0.0001) {
+         stepsToEdge = vertDistToEdge / axisReferenceDir.y;
+    }
+
+    // Calculate the intersection point on the top edge line
+    vec2 originPointOnEdge = curlAxisPos + axisReferenceDir * stepsToEdge;
+
+    // Clamp the origin point to ensure it stays within the page bounds [0,1]x[0,1]
+    // This prevents issues if curlAxisPos goes way off screen.
+    originPointOnEdge = clamp(originPointOnEdge, 0.0, 1.0);
+
+
+    // --- 3. Calculate Distances for Scenario Determination ---
+
+    // Calculate the distance from the originPointOnEdge to the curlAxisPos.
+    // This corresponds to Andrew's 'mouseDist'.
+    float distCurlAxisFromOrigin = length(curlAxisPos - originPointOnEdge);
+
+    // Calculate the vector from the originPointOnEdge to the current fragment.
+    vec2 fragmentVecFromOrigin = vUv - originPointOnEdge;
+
+    // Project the fragment vector onto the axisReferenceDir to find the distance
+    // of the fragment along that direction, measured from the originPointOnEdge.
+    // This corresponds to Andrew's 'proj'.
+    float distFragmentAlongAxisRefDir = dot(fragmentVecFromOrigin, axisReferenceDir);
+
+    // Calculate the perpendicular distance of the fragment FROM the curl axis line.
+    // Positive values are "ahead" of the curl axis (relative to axisReferenceDir),
+    // negative values are "behind".
+    // This corresponds to Andrew's 'dist'.
+    // Handle edge case where curlAmount = 0 (curlAxisPos = curlStartPos -> distCurlAxisFromOrigin can be NaN/Inf if originPoint != curlStart)
+    // If curlAmount is near zero, the curl hasn't started, treat all points as Scenario 1.
+    float distFragmentFromCurlAxis = 0.0;
+    if (curlAmount < 0.0001) {
+        distFragmentFromCurlAxis = radius + 1.0; // Ensure it's > radius -> Scenario 1
+    } else {
+        distFragmentFromCurlAxis = distFragmentAlongAxisRefDir - distCurlAxisFromOrigin;
+    }
+
+
+    // --- 4. Determine Scenario and Calculate Final UV / Color ---
+
+    vec2 finalUV = vUv;
+    vec4 color = vec4(0.0); // Default to transparent black
+    bool calculatedColor = false; // Flag to track if color has been set
+
+
+    // Check if initial vUv is within bounds before proceeding
+    if (!isInBounds(vUv)) {
+       discard; // Discard fragments outside the original page area
+    }
+
+
+    // Use the calculated distFragmentFromCurlAxis to determine the scenario
+    if (distFragmentFromCurlAxis > radius) {
+        // Scenario 1: Ahead of curl, outside the cylinder radius.
+        // This area should be transparent, revealing the underlying next page.
+        calculatedColor = true;
+        finalUV = vUv; // Use original UV for reference
+        color = vec4(0.0); // Transparent
+
+    } else if (distFragmentFromCurlAxis >= 0.0) {
+        // Scenario 2: On the curl cylinder itself
+        calculatedColor = true; // We will calculate *something* here
+
+        // Find the point on the curl axis line closest to the original vUv
+        // This is the point from which we measure the angle theta.
+        vec2 linePoint = vUv - distFragmentFromCurlAxis * axisReferenceDir;
+
+        // Calculate the angle theta based on the distance from the axis
+        // Clamp input to asin to avoid domain errors due to floating point inaccuracies
+        float asinInput = clamp(distFragmentFromCurlAxis / radius, -1.0, 1.0);
+        float theta = asin(asinInput);
+
+        // Calculate the unrolled UV coordinate for the front face (p1)
+        float distForP1 = theta * radius;
+        vec2 p1 = linePoint + axisReferenceDir * distForP1;
+
+        // Calculate the unrolled UV coordinate for the back face (p2)
+        float angleForP2 = PI - theta;
+        float distForP2 = angleForP2 * radius;
+        vec2 p2 = linePoint + axisReferenceDir * distForP2;
+
+        // Check if the calculated back-face UV (p2) is within the page bounds
+        bool seeingBack = isInBounds(p2);
+
+        if (seeingBack) {
+            // Back side coordinates p2 are valid. Sample front texture at p2.
+            finalUV = p2;
+            color = texture2D(frontTexture, finalUV);
+            // Optional: Slightly darken the back face
+            color.rgb *= 0.9;
+        } else {
+            // Seeing the front side (p2 was out of bounds). Use p1.
+            // p1 is assumed to be in bounds based on the curl geometry.
+            finalUV = p1;
+            color = texture2D(frontTexture, finalUV);
+            // Add shading based on curl angle (theta) to simulate curvature
+            float light = 0.7 + 0.3 * cos(theta); // Simple lighting model
+            color.rgb *= light;
+        }
+
+    } else {
+        // Scenario 3: Behind/Under the curl
+        calculatedColor = true;
+
+        // Find the point on the curl axis line closest to the original vUv
+        vec2 linePoint = vUv - distFragmentFromCurlAxis * axisReferenceDir;
+
+        // Calculate the unrolled UV coordinate 'p' for the back face.
+        // The distance along the unrolled page is half the circumference plus the
+        // (negative) distance behind the axis.
+        float distForP = PI * radius + abs(distFragmentFromCurlAxis);
+        vec2 p = linePoint + axisReferenceDir * distForP;
+
+        // Check if the calculated back-face UV (p) is within the page bounds
+        if (isInBounds(p)) {
+            // Back side coordinate 'p' is valid. Use it for sampling.
+            finalUV = p;
+        } else {
+            // If 'p' is out of bounds, use the original fragment UV.
+            finalUV = vUv;
+        }
+        // Sample the front texture with the determined UV.
+        color = texture2D(frontTexture, finalUV);
+    }
+
+    // Final check: Discard if the calculated UV for the visible face ended up out of bounds.
+    // This handles cases where p1 (Scenario 2) or p (Scenario 3) were chosen but landed outside [0,1].
+    // Fragments made transparent (seeingBack in Scen 2, or Scen 1, or Scen 3 with p out of bounds) won't be discarded here.
+    if (calculatedColor && color.a != 0.0 && !isInBounds(finalUV)) {
+       discard;
+    }
+
+    gl_FragColor = color;
 }
+`;
 
 // Animation loop
 function animate(timestamp, state) {
   if (state.done) return;
-  requestAnimationFrame(timestamp => animate(timestamp, state));
+  requestAnimationFrame((timestamp) => animate(timestamp, state));
   if (!state.startTime) state.startTime = timestamp;
 
   const elapsedTime = timestamp - state.startTime;
-  const progress = elapsedTime / state.durationInMs;
+  const progress = Math.min(elapsedTime / state.durationInMs, 1.0); // Ensure progress doesn't exceed 1
   state.curlAmount = progress * state.curlTargetAmount;
 
   if (state.logging)
@@ -75,12 +214,18 @@ function animate(timestamp, state) {
     );
 
   try {
-    updatePageCurl(state);
+    // Update shader uniform instead of geometry
+    if (state.planeMesh && state.planeMesh.material.uniforms) {
+      state.planeMesh.material.uniforms.curlAmount.value = state.curlAmount;
+    }
+    // Render the scene
+    state.renderer.render(state.scene, state.camera);
   } catch (error) {
     state.done = true;
     state.reject(error);
   }
 
+  // Check completion based on progress (not curlAmount directly)
   if (progress >= 1) {
     if (state.logging) console.log('Animation complete');
     state.done = true;
@@ -131,6 +276,7 @@ export async function captureScreenshotOfParentElement(
  * @param {number} [args.durationInMs=1000] - Duration of the animation in milliseconds.
  * @param {number} [args.curlTargetAmount=1.1] - Amount of curl to reach before completion.
  * @param {boolean} [args.logging=false] - Enable verbose logging.
+ * @param {number} [args.curlRadius=0.1] - Radius of the page curl (in normalized coordinates, relative to hypotenuse).
  * @returns {Promise<void>} A promise that resolves when the animation completes.
  * @throws {Error} If required arguments are missing or parent element is not positioned correctly.
  */
@@ -160,14 +306,15 @@ export async function curl(args) {
     done: false,
     logging: args.logging ?? false,
     durationInMs: args.durationInMs ?? 1000,
-    curlTargetAmount: args.curlTargetAmount ?? 1.1,
-    curlAmount: 0.0,
+    // curlTargetAmount defines how far the curl progresses (1.0 = TL corner, >1.0 goes further)
+    curlTargetAmount: args.curlTargetAmount ?? 1.4, // Increased default for shader 
+    curlAmount: 0.0, // Current state of the curl animation for the shader
+    curlRadius: args.curlRadius ?? 0.2, // Default curl radius for shader
     startTime: null,
     scene: null,
     camera: null,
     renderer: null,
     planeMesh: null,
-    originalVertexPositions: null,
     resolve: resolve,
     reject: reject,
   };
@@ -204,6 +351,23 @@ export async function curl(args) {
     state.renderer.setSize(width, height);
     parentElement.appendChild(state.renderer.domElement);
 
+    // Define uniforms for the shader
+    const uniforms = {
+      resolution: { value: new THREE.Vector2(width, height) },
+      curlAmount: { value: state.curlAmount },
+      radius: { value: state.curlRadius },
+      frontTexture: { value: new THREE.CanvasTexture(screenshotCanvas) },
+    };
+
+    // Create shader material
+    const shaderMaterial = new THREE.ShaderMaterial({
+      uniforms: uniforms,
+      vertexShader: vertexShaderSource,
+      fragmentShader: fragmentShaderSource,
+      transparent: true, // Crucial for seeing through the back/underneath
+      side: THREE.DoubleSide, // Render both sides for the effect
+    });
+
     // Set all necessary styles directly on canvas to position it exactly over the element
     const canvasElement = state.renderer.domElement;
 
@@ -222,38 +386,20 @@ export async function curl(args) {
     });
 
     // Create plane for screenshot with element's aspect ratio
-    const planeGeometry = new THREE.PlaneGeometry(FRUSTUM_SIZE * aspect, FRUSTUM_SIZE, 32, 32);
-    state.planeMesh = new THREE.Mesh(
-      planeGeometry.clone(),
-      new THREE.MeshBasicMaterial({
-        transparent: true,
-        opacity: 0,
-        side: THREE.DoubleSide,
-      })
-    );
+    const planeGeometry = new THREE.PlaneGeometry(FRUSTUM_SIZE * aspect, FRUSTUM_SIZE, 1, 1); // Segments can be 1x1 for shader
+    state.planeMesh = new THREE.Mesh(planeGeometry, shaderMaterial);
     state.planeMesh.position.z = 0;
     state.scene.add(state.planeMesh);
 
     // Add lighting
+    // NOTE: Lighting might need adjustment or removal as the shader does its own simple lighting
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
     state.scene.add(ambientLight);
     const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
     directionalLight.position.set(1, 1, 2);
     state.scene.add(directionalLight);
 
-    // Store original positions
-    state.originalVertexPositions = storeOriginalPositions(state.planeMesh.geometry, state.logging);
-
-    // Apply screenshot to canvas plane
-    const texture = new THREE.CanvasTexture(screenshotCanvas);
-    texture.needsUpdate = true;
-    state.planeMesh.material = new THREE.MeshBasicMaterial({
-      map: texture,
-      transparent: false,
-      side: THREE.DoubleSide,
-    });
-    state.planeMesh.material.opacity = 1;
-    if (state.logging) console.log('Screenshot applied to canvas plane.');
+    if (state.logging) console.log('Shader material applied to canvas plane.');
 
     // Switch underlying DOM to next page (it's covered by the canvas)
     if (typeof nextPageContent === 'string') {
@@ -296,7 +442,8 @@ export async function curl(args) {
     state.done = true;
     state.scene = null;
     state.camera = null;
-    state.originalVertexPositions = null;
+    state.renderer = null;
+    state.planeMesh = null; // Should be nulled out already by scene cleanup
 
     if (state.logging) console.log('All resources cleaned up');
   }
