@@ -1,53 +1,45 @@
 import { describe, it, expect } from 'vitest';
 import { calculateCurledVertexPosition } from './curlMath.js';
 
+const geomWidth = 4;
+const geomHeight = 5.5;
 const curlTargetAmount = 1.5;
+const radius = 0.5;
+const angle = Math.PI / 4;
+
+function calculate({
+    originalX,
+    originalY,
+    amount,
+    _geomWidth = geomWidth,
+    _geomHeight = geomHeight,
+    _radius = radius,
+    _angle = angle
+}) {
+  return calculateCurledVertexPosition(
+    originalX, originalY, _geomWidth, _geomHeight, amount, _radius, _angle
+);
+}
 
 describe('calculateCurledVertexPosition', () => {
   it('should not change vertex position if amount is 0', () => {
-    const originalX = 1;
-    const originalY = 1;
-    const geomWidth = 4;
-    const geomHeight = 5.5;
-    const amount = 0;
-    const radius = 0.5;
-    const angle = Math.PI / 4;
 
-    const result = calculateCurledVertexPosition(
-      originalX,
-      originalY,
-      geomWidth,
-      geomHeight,
-      amount,
-      radius,
-      angle
-    );
+    const result = calculate({
+        originalX: 1, 
+        originalY: 1, 
+        amount: 0});
 
-    expect(result.x).toBe(originalX);
-    expect(result.y).toBe(originalY);
+    expect(result.x).toBe(1);
+    expect(result.y).toBe(1);
     expect(result.z).toBe(0); // Assuming z starts at 0 and amount 0 means no change in z
   });
 
   it('should lift the bottom-right corner up by more than half geomHeight when amount is half of curlTargetAmount', () => {
-    const geomWidth = 4;
-    const geomHeight = 5.5;
-    // Bottom-right corner
-    const originalX = geomWidth / 2;
-    const originalY = -geomHeight / 2;
-    
-    const amount = curlTargetAmount / 2; // curlTargetAmount is 1.5, so amount is 0.75
-    const radius = 0.5; // Consistent with main.js curlParameters
-    const angle = Math.PI / 4; // Consistent with main.js curlParameters
 
-    const result = calculateCurledVertexPosition(
-      originalX,
-      originalY,
-      geomWidth,
-      geomHeight,
-      amount,
-      radius,
-      angle
-    );
+    const result = calculate({
+        originalX: geomWidth / 2, 
+        originalY: -geomHeight / 2, 
+        amount: curlTargetAmount / 2});
 
     // Expectation: the new Y position is greater than its original Y + half the geometry height.
     // originalY_bottom_right = -geomHeight / 2.
@@ -60,25 +52,11 @@ describe('calculateCurledVertexPosition', () => {
   });
 
   it('should lift the bottom-left corner above y=0 when amount is 0.8 * curlTargetAmount', () => {
-    const geomWidth = 4;
-    const geomHeight = 5.5;
-    // Bottom-left corner
-    const originalX = -geomWidth / 2;
-    const originalY = -geomHeight / 2;
-    
-    const amount = 0.8 * curlTargetAmount; // amount is 1.2
-    const radius = 0.5; 
-    const angle = Math.PI / 4; 
 
-    const result = calculateCurledVertexPosition(
-      originalX,
-      originalY,
-      geomWidth,
-      geomHeight,
-      amount,
-      radius,
-      angle
-    );
+    const result = calculate({
+        originalX: -geomWidth / 2, 
+        originalY: -geomHeight / 2, 
+        amount: 0.8 * curlTargetAmount});
 
     //console.log(`Test: Bottom-left lift check - OriginalY: ${originalY}, ResultY: ${result.y}, ResultZ: ${result.z}, Amount: ${amount}`);
 
