@@ -57,12 +57,16 @@ function updatePageCurl(state) {
 }
 
 // Animation loop
-function animate(state) {
+function animate(timestamp, state) {
     if (state.done) return;
-    requestAnimationFrame(() => animate(state));
+    requestAnimationFrame((timestamp) => animate(timestamp, state));
+    if (!state.startTime) state.startTime = timestamp;
 
-    state.curlAmount += state.animationSpeed;
-    if (state.logging) console.log(`curlAmount: ${state.curlAmount}`);
+    const elapsedTime = timestamp - state.startTime;
+    const progress = elapsedTime / state.durationInMs;
+    state.curlAmount = progress * state.curlTargetAmount;
+    
+    if (state.logging) console.log(`curlAmount: ${state.curlAmount.toFixed(3)}, progress: ${(progress * 100).toFixed(1)}%`);
 
     try {
         updatePageCurl(state);
@@ -71,7 +75,8 @@ function animate(state) {
         state.reject(error);
     }
 
-    if (state.curlAmount > state.curlTargetAmount) {
+    if (progress >= 1) {
+        if (state.logging) console.log("Animation complete");
         state.done = true;        
         state.resolve();
     }
@@ -100,10 +105,10 @@ export async function captureScreenshotOfParentElement(element, html2canvas, opt
  * 
  * @param {Object} args - The arguments object.
  * @param {Object} args.THREE - The THREE.js library.
- * @param {HTMLElement} args.element - The element to apply the curl effect to. Its parent element must either be the document.body or must be styled with `position: relative`.
+ * @param {HTMLElement} args.element - The element to apply the curl effect to.
  * @param {HTMLCanvasElement} args.screenshotCanvas - The canvas containing the screenshot of the element.
  * @param {(string|Function)} args.nextPageContent - HTML string or function to update the element content after curl.
- * @param {number} [args.animationSpeed=0.01] - Speed of the animation.
+ * @param {number} [args.durationInMs=1000] - Duration of the animation in milliseconds.
  * @param {number} [args.curlTargetAmount=1.1] - Amount of curl to reach before completion.
  * @param {boolean} [args.logging=false] - Enable verbose logging.
  * @returns {Promise<void>} A promise that resolves when the animation completes.
@@ -134,9 +139,10 @@ export async function curl(args) {
     const state = {
         done: false,
         logging: args.logging ?? false,
-        animationSpeed: args.animationSpeed ?? 0.01,
+        durationInMs: args.durationInMs ?? 1000,
         curlTargetAmount: args.curlTargetAmount ?? 1.1,
         curlAmount: 0.0,
+        startTime: null,
         scene: null,
         camera: null,
         renderer: null,
@@ -229,7 +235,8 @@ export async function curl(args) {
         }
         if (state.logging) console.log("Underlying DOM switched to next page content."); 
 
-        animate(state); // Start animation loop
+         // Start animation loop
+        requestAnimationFrame((timestamp) => animate(timestamp, state));
         await promise;
     } finally {
         // Clean up all resources regardless of success or failure
