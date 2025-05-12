@@ -15,7 +15,7 @@ import { calculateCurledVertexPosition } from './curlMath.js';
             curlAmount: 0.0, // 0 (flat) to target value (e.g., 1.0 or 1.5 for full curl and move away)
             curlRadius: 0.5, 
             curlAngle: Math.PI / 4, // Angle of the curl axis (45 degrees for bottom-right curl)
-            animationSpeed: 0.01,
+            animationSpeed: 0.00001,
             curlTargetAmount: 1.5 // Value of curlAmount to consider animation complete
         };
 
