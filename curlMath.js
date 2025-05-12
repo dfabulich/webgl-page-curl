@@ -18,7 +18,14 @@ export function calculateCurledVertexPosition(originalX, originalY, geomWidth, g
         return { x: originalX, y: originalY, z: 0 };
     }
 
-    const R = H / (2 * Math.PI); // Cylinder radius
+    // Calculate the two radii for the elliptical cylinder
+    // We want the circumference to be H, so: 2π√((a² + b²)/2) = H
+    // where a and b are the two radii
+    // Let's use a ratio of 2:1 for the radii (you can adjust this ratio)
+    const radiusRatio = 1/8; // a = 2b
+    const R = H / (2 * Math.PI) / 1.0; // Average radius to maintain circumference
+    const a = R * Math.sqrt(2 * radiusRatio * radiusRatio / (1 + radiusRatio * radiusRatio)); // Major radius
+    const b = a / radiusRatio; // Minor radius
 
     // Unit vector along the roll path (from BR to TL)
     const path_ux = vec_br_tl_x / H;
@@ -50,14 +57,19 @@ export function calculateCurledVertexPosition(originalX, originalY, geomWidth, g
         
         let theta = 0;
         if (R > 0.0001) { // Avoid division by zero if H (and thus R) is tiny
-             theta = s_on_cylinder / R;
+            theta = s_on_cylinder / R;
         }
 
+        // For an elliptical cylinder, we need to adjust the z-coordinate based on the angle
+        // We'll use the parametric equations for an ellipse:
+        // x = a * cos(t)
+        // y = b * sin(t)
+        // where t is the angle parameter
+        const z_deformed = a * (1 - Math.cos(theta)) + b * Math.sin(theta);
+        
         // Deformed u-coordinate (position along path after wrapping)
-        // Stays at u_peel_front if R=0, otherwise moves back by R*sin(theta)
-        const u_deformed = u_peel_front - (R > 0.0001 ? R * Math.sin(theta) : 0);
-        // Deformed z-coordinate (height due to wrapping)
-        const z_deformed = (R > 0.0001 ? R * (1 - Math.cos(theta)) : 0);
+        // For an elliptical cylinder, we need to adjust the u-coordinate as well
+        const u_deformed = u_peel_front - (a * Math.sin(theta) - b * (1 - Math.cos(theta)));
         
         // The v-coordinate (distance along cylinder axis) remains 'v'
         const v_deformed = v;

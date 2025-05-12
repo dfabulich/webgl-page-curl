@@ -16,8 +16,8 @@ import { calculateCurledVertexPosition, calculateFlippedVertexPosition } from '.
             curlAmount: 0.0, // 0 (flat) to target value (e.g., 1.0 or 1.5 for full curl and move away)
             curlRadius: 0.5, 
             curlAngle: Math.PI / 4, // Angle of the curl axis (45 degrees for bottom-right curl)
-            animationSpeed: 0.01,
-            curlTargetAmount: 1.1 // Value of curlAmount to consider animation complete
+            animationSpeed: 0.03,
+            curlTargetAmount: 1.0 // Value of curlAmount to consider animation complete
         };
 
         // Function to store the original positions from a geometry

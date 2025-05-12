@@ -41,7 +41,7 @@ describe('calculateCurledVertexPosition', () => {
     // originalY_bottom_right = -geomHeight / 2.
     // originalY_bottom_right + geomHeight / 2 = 0.
     // So, we expect result.y to be > 0.
-    expect(result.y).toBe(0);
+    expect(result.y).toBeGreaterThan(0);
     
     // For debugging, let's also see what the values are:
     // console.log(`Test: Corner lift check - OriginalY: ${originalY}, ResultY: ${result.y}, ResultZ: ${result.z}`);
