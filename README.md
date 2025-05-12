@@ -27,7 +27,7 @@ However you do it, you'll need to pass your `THREE` object and your `html2canvas
 
 Unfortunately, the browser has no API for taking a screenshot of a DOM element, so you'll have to use `html2canvas` to do it. `html2canvas` is simulating a browser; it's rendering may not be a perfect match for the content you want to animate.
 
-`webgl-page-curl` exports a function `captureScreenshotOfParentElement(element, html2canvas, options = {logging: false})` to take the screenshot. It takes the screenshot of the _parent_ of the element you pass, because that way, if the parent element is smaller than the element itself, we'll take a screenshot of that smaller, reduced shape. (If your element is the body, then we'll just take a screenshot of the entire page.)
+`webgl-page-curl` exports a function `captureScreenshotOfParentElement(element, html2canvas, options = {logging: false})` to take the screenshot. It takes the screenshot of the _parent_ of the element you pass, because that way, if the parent element is smaller than the element itself, we'll take a screenshot of that smaller, reduced shape. (If your parent element is the body, then we'll just take a screenshot of the entire page.)
 
 `html2canvas` returns a `<canvas>` element,
 
@@ -41,11 +41,11 @@ const screenshotCanvas = await captureScreenshotOfParentElement(element, html2ca
 
 If you find another/better way to take a screenshot instead of `html2canvas`, feel free to use it, passing your screenshot to the `curl()` function.
 
-### Prerequisite: Set up a curl container
+### Prerequisite: Ensure the parent element is a curl container
 
-The element you're curling must have a curl container, which will either be the `document.body` or any element with `position: relative`.
+The element you're curling must have a "curl container" parent element. The parent can either be the `document.body` or any element with `position: relative`.
 
-(The parent element must use `position: relative` because we'll position the curl `<canvas>` with `position: absolute` relative to your element's parent.)
+(If the parent isn't the body, then parent element must use `position: relative`, because we'll position the curl `<canvas>` with `position: absolute` relative to your element's parent.)
 
 # Curling the page
 
