@@ -109,9 +109,13 @@ export async function curl(element, nextPageContent, options = {animationSpeed: 
 
     try {
         if (state.logging) console.log("Starting transition...");
+
+        const parentElement = element.parentElement;
+        if (parentElement !== document.body && window.getComputedStyle(parentElement).position !== 'relative') {
+            throw new Error("Parent element must have position: relative. The curl animation will be appended to the parent element with absolute positioning, relative to the parent element.");
+        }
         
-        // Get element dimensions and position
-        const rect = element.parentElement.getBoundingClientRect();
+        const rect = parentElement.getBoundingClientRect();
         const width = rect.width;
         const height = rect.height;
         const aspect = width / height;
@@ -128,7 +132,7 @@ export async function curl(element, nextPageContent, options = {animationSpeed: 
         state.renderer = new THREE.WebGLRenderer({ alpha: true }); 
         state.renderer.setPixelRatio(window.devicePixelRatio);
         state.renderer.setSize(width, height);
-        element.parentNode.appendChild(state.renderer.domElement);
+        parentElement.appendChild(state.renderer.domElement);
         
         // Style the canvas element
         const canvasElement = state.renderer.domElement;
