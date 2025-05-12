@@ -3,7 +3,6 @@ import { calculateCurledVertexPosition, calculateFlippedVertexPosition } from '.
 
         let scene, camera, renderer;
         let planeMesh; // Holds red screenshot
-        let blueScreenshotPlaneMesh; // Holds blue screenshot
         let originalVertexPositions; // Array to store original vertex positions
 
         let redHTMLBodyContent = '';
@@ -76,14 +75,6 @@ import { calculateCurledVertexPosition, calculateFlippedVertexPosition } from '.
             planeMesh.position.z = 0; 
             scene.add(planeMesh);
 
-            blueScreenshotPlaneMesh = new THREE.Mesh(planeGeometry.clone(), new THREE.MeshBasicMaterial({ 
-                transparent: true, 
-                opacity: 0,
-                side: THREE.DoubleSide
-            }));
-            blueScreenshotPlaneMesh.position.z = -0.05; 
-            scene.add(blueScreenshotPlaneMesh);
-
             // Add lighting
             const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
             scene.add(ambientLight);
@@ -101,7 +92,7 @@ import { calculateCurledVertexPosition, calculateFlippedVertexPosition } from '.
                     console.log("Animation already in progress.");
                     return;
                 }
-                if (!planeMesh || !blueScreenshotPlaneMesh) {
+                if (!planeMesh) {
                     console.error("Critical screenshot planes not found. Re-initializing might be needed.");
                     return;
                 }
@@ -134,27 +125,10 @@ import { calculateCurledVertexPosition, calculateFlippedVertexPosition } from '.
                     planeMesh.position.y = 0; 
                     console.log("Red screenshot applied to canvas plane with StandardMaterial.");
 
-                    // 3. Switch underlying DOM to blue & capture blue screenshot (DOM is covered by canvas)
+                    // 3. Switch underlying DOM to blue (it's covered by the canvas)
                     htmlContentDiv.innerHTML = blueHTMLBodyContent;
-                    await new Promise(resolve => requestAnimationFrame(resolve)); 
-                    console.log("Capturing blue screenshot from #html-content (now blue, but covered)...");
-                    const blueCanvas = await html2canvas(htmlContentDiv, { useCORS: true, logging: true, width: htmlContentDiv.offsetWidth, height: htmlContentDiv.offsetHeight, x:0, y:0, scrollX: -htmlContentDiv.scrollLeft, scrollY: -htmlContentDiv.scrollTop });
-                    console.log("Blue screenshot captured.");
-                     const blueDataURL = blueCanvas.toDataURL('image/png'); // Keep this for debugging for a bit
-                    console.log(`DEBUG: blueCanvas data URL length: ${blueDataURL.length}`);
+                    console.log("Underlying DOM switched to blue content."); 
 
-                    // 4. Apply blue screenshot to back canvas plane
-                    if (blueScreenshotPlaneMesh.material.map) blueScreenshotPlaneMesh.material.map.dispose();
-                    blueScreenshotPlaneMesh.material.dispose();
-                    const blueTexture = new THREE.CanvasTexture(blueCanvas);
-                    blueTexture.needsUpdate = true;
-                    blueScreenshotPlaneMesh.material = new THREE.MeshBasicMaterial({ 
-                        map: blueTexture, 
-                        transparent: true,
-                        side: THREE.DoubleSide
-                    });
-                    blueScreenshotPlaneMesh.material.opacity = 1;
-                    console.log("Blue screenshot applied to canvas back plane.");
                                         
                     // 5. Animate red screenshot plane away
                     onWindowResize(); 
@@ -186,10 +160,6 @@ import { calculateCurledVertexPosition, calculateFlippedVertexPosition } from '.
             if (planeMesh) {
                 planeMesh.geometry.dispose();
                 planeMesh.geometry = newPlaneGeometry.clone();
-            }
-            if (blueScreenshotPlaneMesh) {
-                blueScreenshotPlaneMesh.geometry.dispose();
-                blueScreenshotPlaneMesh.geometry = newPlaneGeometry.clone();
             }
             newPlaneGeometry.dispose();
 
@@ -266,16 +236,11 @@ import { calculateCurledVertexPosition, calculateFlippedVertexPosition } from '.
                     planeMesh = null; 
                     
                     // Hide canvas, revealing the underlying blue HTML content
+                    // Ensure blue HTML is definitely set before hiding canvas
+                    document.getElementById('html-content').innerHTML = blueHTMLBodyContent; 
                     renderer.domElement.style.display = 'none'; 
-                    document.getElementById('html-content').innerHTML = blueHTMLBodyContent; // Ensure blue is set if not already
-                    console.log("Canvas hidden. Switched to final blue HTML content.");
+                    console.log("Canvas hidden. Revealing final blue HTML content.");
 
-                    if (blueScreenshotPlaneMesh) {
-                        if (blueScreenshotPlaneMesh.material.map) blueScreenshotPlaneMesh.material.map.dispose();
-                        blueScreenshotPlaneMesh.material.dispose();
-                        scene.remove(blueScreenshotPlaneMesh);
-                        blueScreenshotPlaneMesh = null;
-                    }
                     isAnimatingRedPlaneOut = false;
                     curlParameters.curlAmount = 0.0; // Reset for next time
 
@@ -290,14 +255,6 @@ import { calculateCurledVertexPosition, calculateFlippedVertexPosition } from '.
                     }));
                     planeMesh.position.z = 0;
                     scene.add(planeMesh);
-
-                    blueScreenshotPlaneMesh = new THREE.Mesh(planeGeometry.clone(), new THREE.MeshBasicMaterial({ 
-                        transparent: true, 
-                        opacity: 0,
-                        side: THREE.DoubleSide
-                    }));
-                    blueScreenshotPlaneMesh.position.z = -0.05;
-                    scene.add(blueScreenshotPlaneMesh);
                     
                     // Store original positions for new meshes (this is correct - ONLY for new geometries)
                     originalVertexPositions = storeOriginalPositions(planeMesh.geometry);
