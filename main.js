@@ -98,7 +98,33 @@ export async function captureScreenshotOfParentElement(element, html2canvas, opt
     return canvas;
 }
 
-export async function curl(element, screenshotCanvas, nextPageContent, options = {animationSpeed: 0.01, curlTargetAmount: 1.1}) {
+/**
+ * Performs a page curl transition on an element.
+ * 
+ * @param {Object} args - The arguments object.
+ * @param {HTMLElement} args.element - The element to apply the curl effect to.
+ * @param {HTMLCanvasElement} args.screenshotCanvas - The canvas containing the screenshot of the element.
+ * @param {(string|Function)} args.nextPageContent - HTML string or function to update the element content after curl.
+ * @param {number} [args.animationSpeed=0.01] - Speed of the animation.
+ * @param {number} [args.curlTargetAmount=1.1] - Amount of curl to reach before completion.
+ * @param {boolean} [args.logging=false] - Enable verbose logging.
+ * @returns {Promise<void>} A promise that resolves when the animation completes.
+ * @throws {Error} If required arguments are missing or parent element is not positioned correctly.
+ */
+export async function curl(args) {
+    // Validate required arguments
+    if (!args.element) {
+        throw new Error("Missing required argument: element");
+    }
+    if (!args.screenshotCanvas) {
+        throw new Error("Missing required argument: screenshotCanvas");
+    }
+    if (!args.nextPageContent) {
+        throw new Error("Missing required argument: nextPageContent");
+    }
+
+    const { element, screenshotCanvas, nextPageContent } = args;
+
     let resolve, reject;
     const promise = new Promise((res, rej) => {
         resolve = res;
@@ -106,9 +132,9 @@ export async function curl(element, screenshotCanvas, nextPageContent, options =
     });
     const state = {
         done: false,
-        logging: false,
-        animationSpeed: 0.01,
-        curlTargetAmount: 1.1,
+        logging: args.logging ?? false,
+        animationSpeed: args.animationSpeed ?? 0.01,
+        curlTargetAmount: args.curlTargetAmount ?? 1.1,
         curlAmount: 0.0,
         scene: null,
         camera: null,
@@ -118,12 +144,6 @@ export async function curl(element, screenshotCanvas, nextPageContent, options =
         resolve: resolve,
         reject: reject
     };
-        
-    if (options) {
-        state.animationSpeed = options.animationSpeed ?? 0.01;
-        state.curlTargetAmount = options.curlTargetAmount ?? 1.1;
-        state.logging = options.logging ?? false;
-    }
 
     try {
         if (state.logging) console.log("Starting transition...");
@@ -188,7 +208,7 @@ export async function curl(element, screenshotCanvas, nextPageContent, options =
         
         // Store original positions
         state.originalVertexPositions = storeOriginalPositions(state.planeMesh.geometry, state.logging);
-        
+                
         // Apply screenshot to canvas plane
         const texture = new THREE.CanvasTexture(screenshotCanvas);
         texture.needsUpdate = true;

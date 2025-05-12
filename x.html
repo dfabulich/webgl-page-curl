@@ -51,7 +51,12 @@
         // Set up the go function to be called later
         window.go = async () => {
             const screenshotCanvas = await captureScreenshotOfParentElement(htmlContentDiv, html2canvas, {logging: true});
-            await curl(htmlContentDiv, screenshotCanvas, (el) => el.innerHTML = blueHTMLBodyContent, {logging: true});
+            await curl({
+                element: htmlContentDiv,
+                screenshotCanvas: screenshotCanvas,
+                nextPageContent: blueHTMLBodyContent,
+                logging: true,
+            });
             console.log("Curl complete.");
         }
     </script>
