@@ -100,7 +100,7 @@ export async function captureScreenshotOfParentElement(element, html2canvas, opt
  * 
  * @param {Object} args - The arguments object.
  * @param {Object} args.THREE - The THREE.js library.
- * @param {HTMLElement} args.element - The element to apply the curl effect to.
+ * @param {HTMLElement} args.element - The element to apply the curl effect to. Its parent element must either be the document.body or must be styled with `position: relative`.
  * @param {HTMLCanvasElement} args.screenshotCanvas - The canvas containing the screenshot of the element.
  * @param {(string|Function)} args.nextPageContent - HTML string or function to update the element content after curl.
  * @param {number} [args.animationSpeed=0.01] - Speed of the animation.
@@ -229,7 +229,6 @@ export async function curl(args) {
         }
         if (state.logging) console.log("Underlying DOM switched to next page content."); 
 
-        // 4. Start the animation
         animate(state); // Start animation loop
         await promise;
     } finally {

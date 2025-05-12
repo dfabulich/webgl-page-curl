@@ -1,3 +1,13 @@
+/* This function calculates the new position of a vertex on a plane during a page curl transition.
+In this implementation, we're wrapping the plane around an elliptical cylinder, rolling up from the
+bottom-right corner of the plane towards the top-left corner, traveling along the
+hypotenuse of the plane.
+
+Initially, the cylinder picks up the bottom-right corner of the plane, which begins
+rolling with the cylinder towards the top-left corner. At amount = 1, the cylinder
+has rolled up to the top-left corner, and the bottom-right corner is now at the
+top-left corner.
+*/
 export function calculateCurledVertexPosition(originalX, originalY, geomWidth, geomHeight, amount) {
     const halfWidth = geomWidth / 2;
     const halfHeight = geomHeight / 2;
@@ -12,24 +22,23 @@ export function calculateCurledVertexPosition(originalX, originalY, geomWidth, g
     const vec_br_tl_x = tl_x - br_x; // Should be -geomWidth
     const vec_br_tl_y = tl_y - br_y; // Should be geomHeight
 
-    const H = Math.sqrt(vec_br_tl_x * vec_br_tl_x + vec_br_tl_y * vec_br_tl_y);
+    const hypotenuse = Math.sqrt(vec_br_tl_x * vec_br_tl_x + vec_br_tl_y * vec_br_tl_y);
 
-    if (H < 0.0001) { // Degenerate plane
+    if (hypotenuse < 0.0001) { // Degenerate plane
         return { x: originalX, y: originalY, z: 0 };
     }
 
     // Calculate the two radii for the elliptical cylinder
-    // We want the circumference to be H, so: 2π√((a² + b²)/2) = H
+    // We want the circumference to be equal to the hypotenuse, so: 2π√((a² + b²)/2) = H
     // where a and b are the two radii
-    // Let's use a ratio of 2:1 for the radii (you can adjust this ratio)
-    const radiusRatio = 1/8; // a = 2b
-    const R = H / (2 * Math.PI) / 1.0; // Average radius to maintain circumference
-    const a = R * Math.sqrt(2 * radiusRatio * radiusRatio / (1 + radiusRatio * radiusRatio)); // Major radius
+    const radiusRatio = 1/8;
+    const averageRadius = hypotenuse / (2 * Math.PI) / 1.0; // Average radius to maintain circumference
+    const a = averageRadius * Math.sqrt(2 * radiusRatio * radiusRatio / (1 + radiusRatio * radiusRatio)); // Major radius
     const b = a / radiusRatio; // Minor radius
 
     // Unit vector along the roll path (from BR to TL)
-    const path_ux = vec_br_tl_x / H;
-    const path_uy = vec_br_tl_y / H;
+    const path_ux = vec_br_tl_x / hypotenuse;
+    const path_uy = vec_br_tl_y / hypotenuse;
 
     // Point relative to BR
     const p_rel_br_x = originalX - br_x;
@@ -44,7 +53,7 @@ export function calculateCurledVertexPosition(originalX, originalY, geomWidth, g
     const v = p_rel_br_x * (-path_uy) + p_rel_br_y * path_ux;
 
     // How far the cylinder's contact line has progressed along the path
-    const u_peel_front = amount * H;
+    const u_peel_front = amount * hypotenuse;
 
     let final_x = originalX;
     let final_y = originalY;
@@ -56,8 +65,8 @@ export function calculateCurledVertexPosition(originalX, originalY, geomWidth, g
         const s_on_cylinder = u_peel_front - u;
         
         let theta = 0;
-        if (R > 0.0001) { // Avoid division by zero if H (and thus R) is tiny
-            theta = s_on_cylinder / R;
+        if (averageRadius > 0.0001) { // Avoid division by zero if H (and thus R) is tiny
+            theta = s_on_cylinder / averageRadius;
         }
 
         // For an elliptical cylinder, we need to adjust the z-coordinate based on the angle
