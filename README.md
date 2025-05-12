@@ -4,6 +4,8 @@
 
 It works by first taking a screenshot of the element, rendering that into a `<canvas>` on top of the element, and doing a WebGL animation on that `<canvas>` to make the screenshot appear to peel/curl away, revealing the element below.
 
+https://github.com/user-attachments/assets/384ff44c-a962-4b54-afb4-f8c6f77a3f85
+
 ## Prerequisites
 
 ### Prerequisite: Load dependencies (it's weird, sorry)
