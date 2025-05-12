@@ -127,33 +127,13 @@ function animate(state) {
     if (state.curlAmount > state.curlTargetAmount) {
         state.done = true;
         console.log("Red screenshot curled out. Revealing blue HTML content.");
-        if (state.planeMesh.material.map) state.planeMesh.material.map.dispose();
-        state.planeMesh.material.dispose();
-        state.scene.remove(state.planeMesh);
-        state.planeMesh = null; 
         
         // Remove canvas, revealing the underlying blue HTML content
         state.renderer.domElement.remove();
         console.log("Canvas hidden. Revealing final blue HTML content.");
-
-        // Stop animation by removing planeMesh
         
-        // Clean up THREE.js resources
-        if (state.renderer) {
-            state.renderer.dispose();
-            state.renderer = null;
-        }
-        if (state.scene) {
-            state.scene = null;
-        }
-        if (state.camera) {
-            state.camera = null;
-        }
-        state.originalVertexPositions = null;
         state.resolve();
     }
-
-    
 }
 
 // Main function to trigger the page curl transition
@@ -176,6 +156,9 @@ async function curl(htmlContentDiv, nextPageContent, options = {animationSpeed: 
         resolve: resolve,
         reject: reject
     };
+    
+    // Store resize handler reference so we can remove it later
+    const resizeHandler = () => onWindowResize(state);
     
     if (options) {
         state.animationSpeed = options.animationSpeed ?? 0.01;
@@ -220,7 +203,7 @@ async function curl(htmlContentDiv, nextPageContent, options = {animationSpeed: 
         state.originalVertexPositions = storeOriginalPositions(state.planeMesh.geometry);
         
         // Add window resize event listener
-        window.addEventListener('resize', () => onWindowResize(state), false);
+        window.addEventListener('resize', resizeHandler, false);
         
         // Make canvas visible
         state.renderer.domElement.style.display = 'block';
@@ -257,13 +240,62 @@ async function curl(htmlContentDiv, nextPageContent, options = {animationSpeed: 
         await promise;
     } catch (error) {
         console.error("Error in curl function:", error);
-        if (state.renderer) state.renderer.domElement.style.display = 'none'; // Hide canvas on error
-        
-        // Clean up resources on error
-        if (state.planeMesh && state.planeMesh.material) {
-            if (state.planeMesh.material.map) state.planeMesh.material.map.dispose();
-            state.planeMesh.material.dispose();
+        // Make sure the canvas is removed if we encountered an error
+        if (state.renderer && state.renderer.domElement && state.renderer.domElement.parentNode) {
+            state.renderer.domElement.remove();
         }
-        if (state.renderer) state.renderer.dispose();
+        throw error; // Re-throw the error to allow the caller to handle it
+    } finally {
+        // Clean up all resources regardless of success or failure
+        
+        // Remove event listener
+        window.removeEventListener('resize', resizeHandler);
+        
+        // Clean up THREE.js resources
+        if (state.planeMesh) {
+            if (state.planeMesh.geometry) state.planeMesh.geometry.dispose();
+            if (state.planeMesh.material) {
+                if (state.planeMesh.material.map) state.planeMesh.material.map.dispose();
+                state.planeMesh.material.dispose();
+            }
+        }
+        
+        if (state.scene) {
+            // Remove and dispose of all objects from the scene
+            while (state.scene.children.length > 0) {
+                const object = state.scene.children[0];
+                if (object.geometry) object.geometry.dispose();
+                if (object.material) {
+                    if (Array.isArray(object.material)) {
+                        object.material.forEach(material => {
+                            if (material.map) material.map.dispose();
+                            material.dispose();
+                        });
+                    } else {
+                        if (object.material.map) object.material.map.dispose();
+                        object.material.dispose();
+                    }
+                }
+                state.scene.remove(object);
+            }
+        }
+        
+        // Dispose of renderer
+        if (state.renderer) {
+            state.renderer.dispose();
+            // In case the animation didn't complete and remove the canvas
+            if (state.renderer.domElement && state.renderer.domElement.parentNode) {
+                state.renderer.domElement.remove();
+            }
+        }
+        
+        // Clear all references
+        state.scene = null;
+        state.camera = null;
+        state.renderer = null;
+        state.planeMesh = null;
+        state.originalVertexPositions = null;
+        
+        console.log("All resources cleaned up");
     }
-} 
+}
