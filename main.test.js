@@ -59,5 +59,34 @@ describe('calculateCurledVertexPosition', () => {
     // console.log(`Test: Corner lift check - OriginalY: ${originalY}, ResultY: ${result.y}, ResultZ: ${result.z}`);
   });
 
+  it('should lift the bottom-left corner above y=0 when amount is 0.8 * curlTargetAmount', () => {
+    const geomWidth = 4;
+    const geomHeight = 5.5;
+    // Bottom-left corner
+    const originalX = -geomWidth / 2;
+    const originalY = -geomHeight / 2;
+    
+    const amount = 0.8 * curlTargetAmount; // amount is 1.2
+    const radius = 0.5; 
+    const angle = Math.PI / 4; 
+
+    const result = calculateCurledVertexPosition(
+      originalX,
+      originalY,
+      geomWidth,
+      geomHeight,
+      amount,
+      radius,
+      angle
+    );
+
+    //console.log(`Test: Bottom-left lift check - OriginalY: ${originalY}, ResultY: ${result.y}, ResultZ: ${result.z}, Amount: ${amount}`);
+
+    // Expectation: the new Y position is greater than 0.
+    // Original Y for bottom-left is -geomHeight / 2.
+    expect(result.y).toBeGreaterThan(0);
+    
+  });
+
   // We can add more tests here later
 }); 

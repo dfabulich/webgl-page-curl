@@ -4,15 +4,24 @@ export function calculateCurledVertexPosition(originalX, originalY, geomWidth, g
     const curlOriginX = halfWidth;
     const curlOriginY = -halfHeight;
 
-    let final_x = originalX;
-    let final_y = originalY;
-    let final_z = 0; 
+    // 1. Apply universal overall translation first
+    const overall_translate_y_factor = 0.70; 
+    const overall_translate_x_factor = -0.15; 
+    // Optional: a base z-lift for the whole plane as it starts moving
+    // const base_z_lift_factor = 0.05;
 
-    let dx = originalX - curlOriginX;
-    let dy = originalY - curlOriginY;
+    let new_x = originalX + amount * geomWidth * overall_translate_x_factor;
+    let new_y = originalY + amount * geomHeight * overall_translate_y_factor;
+    let new_z = 0; // Initial Z, will be modified by shaping if applicable
+    // new_z += amount * geomHeight * base_z_lift_factor; // If adding base_z_lift
 
-    let x_rotated = dx * Math.cos(angle) + dy * Math.sin(angle);
-    let y_rotated = -dx * Math.sin(angle) + dy * Math.cos(angle);
+    // 2. Calculate additional displacements for shaping the curl
+    let dx_for_shape = originalX - curlOriginX;
+    let dy_for_shape = originalY - curlOriginY;
+
+    // Rotate to curl-aligned coordinate system for shaping logic
+    let x_rotated = dx_for_shape * Math.cos(angle) + dy_for_shape * Math.sin(angle);
+    let y_rotated = -dx_for_shape * Math.sin(angle) + dy_for_shape * Math.cos(angle);
 
     const curlInfluenceLimit = amount * (Math.sqrt(geomWidth * geomWidth + geomHeight * geomHeight) * 0.75);
 
@@ -21,38 +30,39 @@ export function calculateCurledVertexPosition(originalX, originalY, geomWidth, g
         let y_falloff_distance = Math.abs(y_rotated);
         let curlStrengthFalloff = Math.max(0, 1 - (y_falloff_distance / (geomWidth * 0.5)));
 
-        let shaped_x_component_in_rotated_coords = 0;
-        let shaped_z_component_in_rotated_coords = 0;
+        let delta_x_shape_rotated = 0; // Additional x-offset in rotated coords due to curl shape
+        let delta_z_shape = 0;       // Z-offset due to curl shape
 
         if (curlStrengthFalloff > 0.01) {
-            if (distToCurlLine < radius * Math.PI * curlStrengthFalloff) { 
+            if (distToCurlLine < radius * Math.PI * curlStrengthFalloff) { // Cylindrical part
                 let currentRadius = radius * curlStrengthFalloff;
                 let theta = distToCurlLine / currentRadius;
-                shaped_x_component_in_rotated_coords = currentRadius * Math.sin(theta);
-                shaped_z_component_in_rotated_coords = currentRadius * (1 - Math.cos(theta));
-            } else { 
+                
+                let target_x_in_rotated_coords_for_shape = currentRadius * Math.sin(theta);
+                delta_x_shape_rotated = target_x_in_rotated_coords_for_shape - x_rotated; // Difference from original projection
+                
+                delta_z_shape = currentRadius * (1 - Math.cos(theta));
+            } else { // Flat lifted part (tangent)
                 let currentRadius = radius * curlStrengthFalloff;
-                shaped_z_component_in_rotated_coords = 2 * currentRadius;
-                let tangent_extension = distToCurlLine - (radius * Math.PI * curlStrengthFalloff);
-                shaped_x_component_in_rotated_coords = tangent_extension; 
+                delta_z_shape = 2 * currentRadius; // Max Z lift for this part of the shape
+                // No additional x-displacement in rotated coords for simple tangent lift
+                delta_x_shape_rotated = 0; 
             }
         }
         
-        const z_lift_from_amount = amount * geomHeight * 0.2;
-        shaped_z_component_in_rotated_coords += z_lift_from_amount;
+        // Add the specific z-lift that grows with amount (peeling effect)
+        delta_z_shape += amount * geomHeight * 0.2;
+        new_z += delta_z_shape;
 
-        let pos_x_unrotated = shaped_x_component_in_rotated_coords * Math.cos(-angle) + y_rotated * Math.sin(-angle);
-        let pos_y_unrotated = -shaped_x_component_in_rotated_coords * Math.sin(-angle) + y_rotated * Math.cos(-angle);
+        // Convert the delta_x_shape_rotated (which is along the curl axis in rotated space)
+        // back to unrotated coordinate deltas and add them to new_x, new_y.
+        // The y-component of this delta in rotated space is 0.
+        let additional_dx_unrotated = delta_x_shape_rotated * Math.cos(angle); // cos(-angle) = cos(angle)
+        let additional_dy_unrotated = delta_x_shape_rotated * Math.sin(angle); // -sin(-angle) = sin(angle)
 
-        final_x = pos_x_unrotated + curlOriginX;
-        final_y = pos_y_unrotated + curlOriginY;
-        final_z = shaped_z_component_in_rotated_coords;
-
-        const overall_translate_y_factor = 0.70; 
-        const overall_translate_x_factor = -0.15; 
-
-        final_x += amount * geomWidth * overall_translate_x_factor;
-        final_y += amount * geomHeight * overall_translate_y_factor;
+        new_x += additional_dx_unrotated;
+        new_y += additional_dy_unrotated;
     }
-    return { x: final_x, y: final_y, z: final_z };
+    
+    return { x: new_x, y: new_y, z: new_z };
 } 
