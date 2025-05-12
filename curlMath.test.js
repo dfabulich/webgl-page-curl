@@ -138,10 +138,31 @@ describe('calculateCurledVertexPosition', () => {
     expect(topLeftResult.y).toBeCloseTo(topLeftOriginalY);
     expect(topLeftResult.z).toBeCloseTo(0);
     
-    // Bottom-right corner should end up at the top-left corner position
+    // Bottom-right corner should end up at the top-left corner X,Y position
     expect(bottomRightResult.x).toBeCloseTo(topLeftOriginalX);
     expect(bottomRightResult.y).toBeCloseTo(topLeftOriginalY);
-    expect(bottomRightResult.z).toBeCloseTo(0);
+    
+    // After our fix for the negative Z issue, the bottom-right should have a positive Z value
+    // even when it reaches the top-left corner position
+    expect(bottomRightResult.z).toBeGreaterThan(0);
+  });
+  
+  it('should ensure bottom-right corner Z remains positive at 95% curl amount', () => {
+    const amount = 0.95;
+    
+    // Get bottom-right corner position
+    const bottomRightResult = calculate({
+      originalX: geomWidth / 2,
+      originalY: -geomHeight / 2,
+      amount: amount,
+    });
+    
+    // Log the position for debugging
+    console.log(`Bottom-right corner at amount=${amount}:`);
+    console.log(`Position: (${bottomRightResult.x.toFixed(3)}, ${bottomRightResult.y.toFixed(3)}, ${bottomRightResult.z.toFixed(3)})`);
+    
+    // Verify Z coordinate is positive (our fix should ensure this)
+    expect(bottomRightResult.z).toBeGreaterThan(0);
   });
   // We can add more tests here later
 });
