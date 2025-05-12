@@ -40,7 +40,8 @@ export async function init() {
 
     // Set up the go function to be called later
     window.go = async () => {
-        return curl(htmlContentDiv, blueHTMLBodyContent);
+        await curl(htmlContentDiv, blueHTMLBodyContent);
+        console.log("Curl complete.");
     }
 }
 
@@ -102,58 +103,68 @@ function updatePageCurl(state, amount) {
     
     positions.needsUpdate = true;
     geometry.computeVertexNormals();
+    state.renderer.render(state.scene, state.camera);
 }
 
 // Animation loop
 function animate(state) {
+    if (state.done) return;
     // Always request animation frame while animating
     requestAnimationFrame(() => animate(state));
 
-    if (state.planeMesh) {
-        state.curlAmount += state.animationSpeed;
-        console.log(`curlAmount: ${state.curlAmount}`);
+    state.curlAmount += state.animationSpeed;
+    console.log(`curlAmount: ${state.curlAmount}`);
 
+    try {
         updatePageCurl(
             state, 
             state.curlAmount
         );
+    } catch (error) {
+        state.reject(error);
+    }
 
-        if (state.curlAmount > state.curlTargetAmount) {
-            console.log("Red screenshot curled out. Revealing blue HTML content.");
-            if (state.planeMesh.material.map) state.planeMesh.material.map.dispose();
-            state.planeMesh.material.dispose();
-            state.scene.remove(state.planeMesh);
-            state.planeMesh = null; 
-            
-            // Hide canvas, revealing the underlying blue HTML content
-            state.renderer.domElement.style.display = 'none'; 
-            console.log("Canvas hidden. Revealing final blue HTML content.");
+    if (state.curlAmount > state.curlTargetAmount) {
+        state.done = true;
+        console.log("Red screenshot curled out. Revealing blue HTML content.");
+        if (state.planeMesh.material.map) state.planeMesh.material.map.dispose();
+        state.planeMesh.material.dispose();
+        state.scene.remove(state.planeMesh);
+        state.planeMesh = null; 
+        
+        // Remove canvas, revealing the underlying blue HTML content
+        state.renderer.domElement.remove();
+        console.log("Canvas hidden. Revealing final blue HTML content.");
 
-            // Stop animation by removing planeMesh
-            
-            // Clean up THREE.js resources
-            if (state.renderer) {
-                state.renderer.dispose();
-                state.renderer = null;
-            }
-            if (state.scene) {
-                state.scene = null;
-            }
-            if (state.camera) {
-                state.camera = null;
-            }
-            state.originalVertexPositions = null;
+        // Stop animation by removing planeMesh
+        
+        // Clean up THREE.js resources
+        if (state.renderer) {
+            state.renderer.dispose();
+            state.renderer = null;
         }
+        if (state.scene) {
+            state.scene = null;
+        }
+        if (state.camera) {
+            state.camera = null;
+        }
+        state.originalVertexPositions = null;
+        state.resolve();
     }
+
     
-    if (state.renderer && state.renderer.domElement.style.display !== 'none') {
-        state.renderer.render(state.scene, state.camera);
-    }
 }
 
 // Main function to trigger the page curl transition
 async function curl(htmlContentDiv, nextPageContent, options = {animationSpeed: 0.01, curlTargetAmount: 1.1}) {
+    let resolve, reject;
+    const promise = new Promise((res, rej) => {
+        resolve = res;
+        reject = rej;
+    });
     const state = {
+        done: false,
         animationSpeed: 0.01,
         curlTargetAmount: 1.1,
         curlAmount: 0.0,
@@ -161,7 +172,9 @@ async function curl(htmlContentDiv, nextPageContent, options = {animationSpeed: 
         camera: null,
         renderer: null,
         planeMesh: null,
-        originalVertexPositions: null
+        originalVertexPositions: null,
+        resolve: resolve,
+        reject: reject
     };
     
     if (options) {
@@ -241,7 +254,7 @@ async function curl(htmlContentDiv, nextPageContent, options = {animationSpeed: 
 
         // 4. Start the animation
         animate(state); // Start animation loop
-        
+        await promise;
     } catch (error) {
         console.error("Error in curl function:", error);
         if (state.renderer) state.renderer.domElement.style.display = 'none'; // Hide canvas on error
