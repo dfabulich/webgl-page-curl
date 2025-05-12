@@ -80,7 +80,25 @@ function animate(state) {
     }
 }
 
-export async function curl(element, nextPageContent, options = {animationSpeed: 0.01, curlTargetAmount: 1.1}) {
+export async function captureScreenshotOfParentElement(element, html2canvas, options = {logging: false}) {
+    const parentElement = element.parentElement;
+    const rect = parentElement.getBoundingClientRect();
+    const width = rect.width;
+    const height = rect.height;
+    const canvas = await html2canvas(parentElement, { 
+        useCORS: true, 
+        logging: options.logging, 
+        width: width, 
+        height: height, 
+        x:0, y:0, 
+        scrollX: -parentElement.scrollLeft, 
+        scrollY: -parentElement.scrollTop 
+    });
+    if (options.logging) console.log("Screenshot captured", canvas.outerHTML);
+    return canvas;
+}
+
+export async function curl(element, screenshotCanvas, nextPageContent, options = {animationSpeed: 0.01, curlTargetAmount: 1.1}) {
     let resolve, reject;
     const promise = new Promise((res, rej) => {
         resolve = res;
@@ -134,21 +152,19 @@ export async function curl(element, nextPageContent, options = {animationSpeed: 
         state.renderer.setSize(width, height);
         parentElement.appendChild(state.renderer.domElement);
         
-        // Style the canvas element
+        // Set all necessary styles directly on canvas to position it exactly over the element
         const canvasElement = state.renderer.domElement;
         
-        // Calculate appropriate z-index
-        const elementZIndex = parseInt(window.getComputedStyle(element).zIndex) || 0;
-        const canvasZIndex = isNaN(elementZIndex) ? 2 : elementZIndex + 1;
-        
-        // Set all necessary styles directly on canvas to position it exactly over the element
+        const elementZIndex = Number(window.getComputedStyle(element).zIndex) || 0;
+        const canvasZIndex = elementZIndex + 1;
+
         Object.assign(canvasElement.style, {
             position: 'absolute',
             top: '0',
             left: '0',
             width: `${width}px`,
             height: `${height}px`,
-            zIndex: canvasZIndex.toString(),
+            zIndex: canvasZIndex,
             pointerEvents: 'none', // Allow clicks to pass through
             backgroundColor: 'transparent'
         });
@@ -172,24 +188,9 @@ export async function curl(element, nextPageContent, options = {animationSpeed: 
         
         // Store original positions
         state.originalVertexPositions = storeOriginalPositions(state.planeMesh.geometry, state.logging);
-                
-        // Make canvas visible
-        state.renderer.domElement.style.display = 'block';
         
-        if (state.logging) console.log("Capturing screenshot from element...");
-        const canvas = await html2canvas(element.parentElement, { 
-            useCORS: true, 
-            logging: state.logging, 
-            width: element.parentElement.offsetWidth, 
-            height: element.parentElement.offsetHeight, 
-            x:0, y:0, 
-            scrollX: -element.parentElement.scrollLeft, 
-            scrollY: -element.parentElement.scrollTop 
-        });
-        if (state.logging) console.log("Screenshot captured.");
-
-        // 2. Apply screenshot to canvas plane
-        const texture = new THREE.CanvasTexture(canvas);
+        // Apply screenshot to canvas plane
+        const texture = new THREE.CanvasTexture(screenshotCanvas);
         texture.needsUpdate = true;
         state.planeMesh.material = new THREE.MeshBasicMaterial({ 
             map: texture, 
@@ -199,15 +200,18 @@ export async function curl(element, nextPageContent, options = {animationSpeed: 
         state.planeMesh.material.opacity = 1;
         if (state.logging) console.log("Screenshot applied to canvas plane.");
 
-        // 3. Switch underlying DOM to next page (it's covered by the canvas)
-        element.innerHTML = nextPageContent;
+        // Switch underlying DOM to next page (it's covered by the canvas)
+        if (typeof nextPageContent === 'string') {
+            element.innerHTML = nextPageContent;
+        } else {
+            nextPageContent(element);
+        }
         if (state.logging) console.log("Underlying DOM switched to next page content."); 
 
         // 4. Start the animation
         animate(state); // Start animation loop
         await promise;
     } finally {
-        if (1) return;
         // Clean up all resources regardless of success or failure
                 
         // Clean up THREE.js resources
