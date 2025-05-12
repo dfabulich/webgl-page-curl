@@ -4,9 +4,9 @@ export function calculateCurledVertexPosition(originalX, originalY, geomWidth, g
     const curlOriginX = halfWidth;
     const curlOriginY = -halfHeight;
 
-    let new_x = originalX;
-    let new_y = originalY;
-    let new_z = 0; // Assuming plane starts flat at z=0 in its local space
+    let final_x = originalX;
+    let final_y = originalY;
+    let final_z = 0; 
 
     let dx = originalX - curlOriginX;
     let dy = originalY - curlOriginY;
@@ -16,33 +16,43 @@ export function calculateCurledVertexPosition(originalX, originalY, geomWidth, g
 
     const curlInfluenceLimit = amount * (Math.sqrt(geomWidth * geomWidth + geomHeight * geomHeight) * 0.75);
 
-    if (x_rotated > 0 && x_rotated < curlInfluenceLimit) {
+    if (x_rotated >= 0 && x_rotated < curlInfluenceLimit) {
         let distToCurlLine = x_rotated;
         let y_falloff_distance = Math.abs(y_rotated);
         let curlStrengthFalloff = Math.max(0, 1 - (y_falloff_distance / (geomWidth * 0.5)));
 
-        if (distToCurlLine < radius * Math.PI * curlStrengthFalloff) {
-            if (curlStrengthFalloff > 0.01) {
+        let shaped_x_component_in_rotated_coords = 0;
+        let shaped_z_component_in_rotated_coords = 0;
+
+        if (curlStrengthFalloff > 0.01) {
+            if (distToCurlLine < radius * Math.PI * curlStrengthFalloff) { 
                 let currentRadius = radius * curlStrengthFalloff;
                 let theta = distToCurlLine / currentRadius;
-                let curled_x_rotated = currentRadius * Math.sin(theta);
-                let curled_z_rotated = currentRadius * (1 - Math.cos(theta));
-                curled_z_rotated += amount * geomHeight * 0.2; 
-
-                new_x = (curled_x_rotated * Math.cos(-angle) + y_rotated * Math.sin(-angle)) + curlOriginX;
-                new_y = (-curled_x_rotated * Math.sin(-angle) + y_rotated * Math.cos(-angle)) + curlOriginY;
-                new_z = curled_z_rotated;
+                shaped_x_component_in_rotated_coords = currentRadius * Math.sin(theta);
+                shaped_z_component_in_rotated_coords = currentRadius * (1 - Math.cos(theta));
+            } else { 
+                let currentRadius = radius * curlStrengthFalloff;
+                shaped_z_component_in_rotated_coords = 2 * currentRadius;
+                let tangent_extension = distToCurlLine - (radius * Math.PI * curlStrengthFalloff);
+                shaped_x_component_in_rotated_coords = tangent_extension; 
             }
-        } else if (curlStrengthFalloff > 0.01) {
-            let currentRadius = radius * curlStrengthFalloff;
-            let lifted_z = 2 * currentRadius;
-            lifted_z += amount * geomHeight * 0.2; 
-            let tangent_extension = distToCurlLine - (radius * Math.PI * curlStrengthFalloff);
-            let curled_x_rotated = currentRadius * Math.sin(Math.PI) + tangent_extension;
-            new_x = (curled_x_rotated * Math.cos(-angle) + y_rotated * Math.sin(-angle)) + curlOriginX;
-            new_y = (-curled_x_rotated * Math.sin(-angle) + y_rotated * Math.cos(-angle)) + curlOriginY;
-            new_z = lifted_z;
         }
+        
+        const z_lift_from_amount = amount * geomHeight * 0.2;
+        shaped_z_component_in_rotated_coords += z_lift_from_amount;
+
+        let pos_x_unrotated = shaped_x_component_in_rotated_coords * Math.cos(-angle) + y_rotated * Math.sin(-angle);
+        let pos_y_unrotated = -shaped_x_component_in_rotated_coords * Math.sin(-angle) + y_rotated * Math.cos(-angle);
+
+        final_x = pos_x_unrotated + curlOriginX;
+        final_y = pos_y_unrotated + curlOriginY;
+        final_z = shaped_z_component_in_rotated_coords;
+
+        const overall_translate_y_factor = 0.70; 
+        const overall_translate_x_factor = -0.15; 
+
+        final_x += amount * geomWidth * overall_translate_x_factor;
+        final_y += amount * geomHeight * overall_translate_y_factor;
     }
-    return { x: new_x, y: new_y, z: new_z };
+    return { x: final_x, y: final_y, z: final_z };
 } 
