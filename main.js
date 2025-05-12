@@ -110,8 +110,15 @@ export async function curl(element, nextPageContent, options = {animationSpeed: 
     try {
         if (state.logging) console.log("Starting transition...");
         
+        // Get element dimensions and position
+        const rect = element.parentElement.getBoundingClientRect();
+        const width = rect.width;
+        const height = rect.height;
+        const aspect = width / height;
+        
+        if (state.logging) console.log({width, height, aspect});
+
         state.scene = new THREE.Scene();
-        const aspect = window.innerWidth / window.innerHeight;
         const fov = 75; // Field of View
         const FRUSTUM_SIZE = 5;
         state.camera = new THREE.PerspectiveCamera(fov, aspect, 0.1, 1000);
@@ -120,7 +127,7 @@ export async function curl(element, nextPageContent, options = {animationSpeed: 
 
         state.renderer = new THREE.WebGLRenderer({ alpha: true }); 
         state.renderer.setPixelRatio(window.devicePixelRatio);
-        state.renderer.setSize(window.innerWidth, window.innerHeight);
+        state.renderer.setSize(width, height);
         element.parentNode.appendChild(state.renderer.domElement);
         
         // Style the canvas element
@@ -130,19 +137,19 @@ export async function curl(element, nextPageContent, options = {animationSpeed: 
         const elementZIndex = parseInt(window.getComputedStyle(element).zIndex) || 0;
         const canvasZIndex = isNaN(elementZIndex) ? 2 : elementZIndex + 1;
         
-        // Set all necessary styles directly on canvas
+        // Set all necessary styles directly on canvas to position it exactly over the element
         Object.assign(canvasElement.style, {
-            position: 'fixed',
+            position: 'absolute',
             top: '0',
             left: '0',
-            right: '100%',
-            height: '100%',
+            width: `${width}px`,
+            height: `${height}px`,
             zIndex: canvasZIndex.toString(),
             pointerEvents: 'none', // Allow clicks to pass through
             backgroundColor: 'transparent'
         });
         
-        // Create plane for screenshot
+        // Create plane for screenshot with element's aspect ratio
         const planeGeometry = new THREE.PlaneGeometry(FRUSTUM_SIZE * aspect, FRUSTUM_SIZE, 32, 32);
         state.planeMesh = new THREE.Mesh(planeGeometry.clone(), new THREE.MeshBasicMaterial({ 
             transparent: true, 
@@ -166,14 +173,14 @@ export async function curl(element, nextPageContent, options = {animationSpeed: 
         state.renderer.domElement.style.display = 'block';
         
         if (state.logging) console.log("Capturing screenshot from element...");
-        const canvas = await html2canvas(element, { 
+        const canvas = await html2canvas(element.parentElement, { 
             useCORS: true, 
             logging: state.logging, 
-            width: element.offsetWidth, 
-            height: element.offsetHeight, 
+            width: element.parentElement.offsetWidth, 
+            height: element.parentElement.offsetHeight, 
             x:0, y:0, 
-            scrollX: -element.scrollLeft, 
-            scrollY: -element.scrollTop 
+            scrollX: -element.parentElement.scrollLeft, 
+            scrollY: -element.parentElement.scrollTop 
         });
         if (state.logging) console.log("Screenshot captured.");
 
@@ -196,6 +203,7 @@ export async function curl(element, nextPageContent, options = {animationSpeed: 
         animate(state); // Start animation loop
         await promise;
     } finally {
+        if (1) return;
         // Clean up all resources regardless of success or failure
                 
         // Clean up THREE.js resources
