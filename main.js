@@ -18,33 +18,6 @@ function storeOriginalPositions(geometry, logging) {
     return originalPositions;
 }
 
-// Initialize only HTML content, not THREE.js
-export async function init() {
-    const htmlContentDiv = document.getElementById('html-content');
-    let redHTMLBodyContent = '';
-    let blueHTMLBodyContent = '';
-    try {
-        const redResponse = await fetch('red.html');
-        if (!redResponse.ok) throw new Error(`HTTP error loading red.html: ${redResponse.status}`);
-        redHTMLBodyContent = await redResponse.text().then(text => new DOMParser().parseFromString(text, 'text/html').body.innerHTML);
-
-        const blueResponse = await fetch('blue.html');
-        if (!blueResponse.ok) throw new Error(`HTTP error loading blue.html: ${blueResponse.status}`);
-        blueHTMLBodyContent = await blueResponse.text().then(text => new DOMParser().parseFromString(text, 'text/html').body.innerHTML);
-        
-        htmlContentDiv.innerHTML = redHTMLBodyContent;
-    } catch (error) {
-        console.error("Error loading HTML content:", error);
-        htmlContentDiv.innerHTML = '<p style="color:red;">Error loading initial content.</p>';
-    }
-
-    // Set up the go function to be called later
-    window.go = async () => {
-        await curl(htmlContentDiv, blueHTMLBodyContent, {logging: true});
-        console.log("Curl complete.");
-    }
-}
-
 // Function to deform the plane geometry for the curl effect
 function updatePageCurl(state, amount) {
     const geometry = state.planeMesh.geometry;
@@ -110,8 +83,7 @@ function animate(state) {
     }
 }
 
-// Main function to trigger the page curl transition
-async function curl(element, nextPageContent, options = {animationSpeed: 0.01, curlTargetAmount: 1.1}) {
+export async function curl(element, nextPageContent, options = {animationSpeed: 0.01, curlTargetAmount: 1.1}) {
     let resolve, reject;
     const promise = new Promise((res, rej) => {
         resolve = res;

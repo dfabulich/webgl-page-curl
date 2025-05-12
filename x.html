@@ -40,9 +40,31 @@
         }
     </script>
     <script type="module">
-        import { init } from './main.js';
+        import { curl } from './main.js';
         // The 'go' function will be attached to the window object by the init() function from main.js
-        init();
+        const htmlContentDiv = document.getElementById('html-content');
+        let redHTMLBodyContent = '';
+        let blueHTMLBodyContent = '';
+        try {
+            const redResponse = await fetch('red.html');
+            if (!redResponse.ok) throw new Error(`HTTP error loading red.html: ${redResponse.status}`);
+            redHTMLBodyContent = await redResponse.text().then(text => new DOMParser().parseFromString(text, 'text/html').body.innerHTML);
+
+            const blueResponse = await fetch('blue.html');
+            if (!blueResponse.ok) throw new Error(`HTTP error loading blue.html: ${blueResponse.status}`);
+            blueHTMLBodyContent = await blueResponse.text().then(text => new DOMParser().parseFromString(text, 'text/html').body.innerHTML);
+            
+            htmlContentDiv.innerHTML = redHTMLBodyContent;
+        } catch (error) {
+            console.error("Error loading HTML content:", error);
+            htmlContentDiv.innerHTML = '<p style="color:red;">Error loading initial content.</p>';
+        }
+
+        // Set up the go function to be called later
+        window.go = async () => {
+            await curl(htmlContentDiv, blueHTMLBodyContent, {logging: true});
+            console.log("Curl complete.");
+        }
     </script>
 </body>
 </html>
