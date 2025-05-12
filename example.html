@@ -14,7 +14,6 @@
         }
     </style>
     <!-- html2canvas library -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.js"></script>
 </head>
 <body>
     <div id="html-content"></div>
@@ -25,17 +24,9 @@
         <div id="html-content"></div>
     </div>
     -->
-
-    <script type="importmap">
-        {
-            "imports": {
-                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
-            }
-        }
-    </script>
     <script type="module">
-        import * as THREE from 'three';
+        import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
+        import html2canvas from 'https://esm.sh/html2canvas';
         import { curl, captureScreenshotOfParentElement } from './webgl-page-curl.js';
         const htmlContentDiv = document.getElementById('html-content');
         let redHTMLBodyContent = `<p><button onclick="window.go()">Curl!</button></p>` + `<p style="color: red;">
