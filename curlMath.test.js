@@ -105,5 +105,43 @@ describe('calculateCurledVertexPosition', () => {
     expect(topLeftResult.y).toBe(topLeftOriginalY);
   });
 
+  it('should keep top-left corner fixed and move bottom-right corner to top-left when amount = 1', () => {
+    const amount = 1.0;
+    
+    // Define our corners
+    const topLeftOriginalX = -geomWidth / 2;
+    const topLeftOriginalY = geomHeight / 2;
+    
+    const bottomRightOriginalX = geomWidth / 2;
+    const bottomRightOriginalY = -geomHeight / 2;
+    
+    // Get their final positions
+    const topLeftResult = calculate({
+      originalX: topLeftOriginalX,
+      originalY: topLeftOriginalY,
+      amount: amount,
+    });
+    
+    const bottomRightResult = calculate({
+      originalX: bottomRightOriginalX,
+      originalY: bottomRightOriginalY,
+      amount: amount,
+    });
+    
+    // Debug positions
+    console.log('Full curl (amount = 1.0):');
+    console.log(`Top-Left: Original(${topLeftOriginalX}, ${topLeftOriginalY}) → Final(${topLeftResult.x.toFixed(3)}, ${topLeftResult.y.toFixed(3)}, ${topLeftResult.z.toFixed(3)})`);
+    console.log(`Bottom-Right: Original(${bottomRightOriginalX}, ${bottomRightOriginalY}) → Final(${bottomRightResult.x.toFixed(3)}, ${bottomRightResult.y.toFixed(3)}, ${bottomRightResult.z.toFixed(3)})`);
+    
+    // Top-left corner should not move
+    expect(topLeftResult.x).toBeCloseTo(topLeftOriginalX);
+    expect(topLeftResult.y).toBeCloseTo(topLeftOriginalY);
+    expect(topLeftResult.z).toBeCloseTo(0);
+    
+    // Bottom-right corner should end up at the top-left corner position
+    expect(bottomRightResult.x).toBeCloseTo(topLeftOriginalX);
+    expect(bottomRightResult.y).toBeCloseTo(topLeftOriginalY);
+    expect(bottomRightResult.z).toBeCloseTo(0);
+  });
   // We can add more tests here later
 });
