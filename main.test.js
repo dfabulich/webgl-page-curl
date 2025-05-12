@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { calculateCurledVertexPosition } from './curlMath.js';
 
 const geomWidth = 4;
-const geomHeight = 5.5;
+const geomHeight = 8;
 const curlTargetAmount = 1.0;
 
 function calculate({
