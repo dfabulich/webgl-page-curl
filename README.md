@@ -12,7 +12,7 @@ It works by first taking a screenshot of the element, rendering that into a `<ca
 
 In the `example.html` file, we load `three.js` and `html2canvas` like this:
 
-```
+```js
 import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
 import html2canvas from 'https://esm.sh/html2canvas';
 ```
@@ -31,7 +31,7 @@ Unfortunately, the browser has no API for taking a screenshot of a DOM element, 
 
 Use it like this:
 
-```
+```js
 import html2canvas from 'https://esm.sh/html2canvas';
 import { captureScreenshotOfParentElement } from 'webgl-page-curl';
 const screenshotCanvas = await captureScreenshotOfParentElement(element, html2canvas);
@@ -49,7 +49,7 @@ The element you're curling must have a curl container, which will either be the 
 
 Once you have a `screenshotCanvas`, you can invoke the `curl` function like this:
 
-```
+```js
 import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
 import { curl } from 'webgl-page-curl';
 await curl({
