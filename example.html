@@ -36,8 +36,7 @@
     </script>
     <script type="module">
         import * as THREE from 'three';
-        import { curl, captureScreenshotOfParentElement } from './main.js';
-        // The 'go' function will be attached to the window object by the init() function from main.js
+        import { curl, captureScreenshotOfParentElement } from './webgl-page-curl.js';
         const htmlContentDiv = document.getElementById('html-content');
         let redHTMLBodyContent = `<p><button onclick="window.go()">Curl!</button></p>` + `<p style="color: red;">
             Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt

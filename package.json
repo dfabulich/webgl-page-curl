@@ -1,7 +1,7 @@
 {
-  "name": "webgl-curl",
+  "name": "webgl-page-curl",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "webgl-page-curl.js",
   "scripts": {
     "test": "vitest run"
   },
