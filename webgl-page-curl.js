@@ -82,6 +82,15 @@ function animate(timestamp, state) {
     }
 }
 
+/**
+ * Captures a screenshot of the parent element of the given element.
+ * 
+ * @param {HTMLElement} element - The element to capture the screenshot of.
+ * @param {Function} html2canvas - The html2canvas library.
+ * @param {Object} options - The options object.
+ * @param {boolean} [options.logging=false] - Enable verbose logging.
+ * @returns {Promise<HTMLCanvasElement>} A promise that resolves to a canvas element containing the screenshot.
+ */
 export async function captureScreenshotOfParentElement(element, html2canvas, options = {logging: false}) {
     const parentElement = element.parentElement;
     const rect = parentElement.getBoundingClientRect();
