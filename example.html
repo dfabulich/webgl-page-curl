@@ -8,6 +8,9 @@
         body { margin: 0; height: 100vh; overflow: hidden; }
         #curl-container {
             position: relative;
+            width: 50vw;
+            height: 50vw;
+            overflow: hidden;
         }
         #html-content {
             display: flow-root; /* Prevent child margins from collapsing outside */
@@ -19,11 +22,13 @@
     <div id="html-content"></div>
 
     <!-- Or, for example, wrap the content in a curl container.
-     Remember to set `position: relative;` on the curl container!
+     Remember to set `position: relative;` on the curl container! -->
+    <!--
     <div id="curl-container">
         <div id="html-content"></div>
     </div>
     -->
+
     <script type="module">
         import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
         import html2canvas from 'https://esm.sh/html2canvas';
