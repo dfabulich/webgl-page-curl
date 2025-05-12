@@ -32,7 +32,7 @@ export function calculateCurledVertexPosition(originalX, originalY, geomWidth, g
   // Calculate the two radii for the elliptical cylinder
   // We want the circumference to be equal to the hypotenuse, so: 2π√((a² + b²)/2) = H
   // where a and b are the two radii
-  const radiusRatio = 1 / 8;
+  const radiusRatio = 1 / 8; // <-- This creates an elliptical cylinder (1 would make it circular)
   const averageRadius = hypotenuse / (2 * Math.PI) / 1.0; // Average radius to maintain circumference
   const a =
     averageRadius * Math.sqrt((2 * radiusRatio * radiusRatio) / (1 + radiusRatio * radiusRatio)); // Major radius
@@ -55,6 +55,7 @@ export function calculateCurledVertexPosition(originalX, originalY, geomWidth, g
   const v = p_rel_br_x * -path_uy + p_rel_br_y * path_ux;
 
   // How far the cylinder's contact line has progressed along the path
+  // This line acts as the "fold line" that separates the flat part from the curved part
   const u_peel_front = amount * hypotenuse;
 
   let final_x = originalX;
@@ -78,7 +79,26 @@ export function calculateCurledVertexPosition(originalX, originalY, geomWidth, g
     // x = a * cos(t)
     // y = b * sin(t)
     // where t is the angle parameter
-    const z_deformed = a * (1 - Math.cos(theta)) + b * Math.sin(theta);
+    // 
+    // IMPORTANT: With radiusRatio = 1/8, the ellipse is very elongated.
+    // This means that for angles greater than ~180 degrees (π), 
+    // the z position can wrap back around to negative values
+    // when the bottom-right corner completes more than half a revolution
+    
+    // Calculate the standard elliptical Z position
+    let z_deformed = a * (1 - Math.cos(theta)) + b * Math.sin(theta);
+    
+    // Fix for the "wrapping around" issue:
+    // After we pass the halfway point of the animation (θ > π/2), 
+    // we want to ensure the Z value doesn't go negative again.
+    // We'll use a modified Z calculation when theta is large.
+    const halfPi = Math.PI / 2;
+    if (theta > halfPi) {
+      // For angles > 90 degrees, ensure Z stays positive by taking the max
+      // of the calculated Z and a minimum Z that increases with angle
+      const minZ = b * Math.sin(halfPi) * (theta / halfPi - 1); // This grows as theta increases
+      z_deformed = Math.max(z_deformed, minZ);
+    }
 
     // Deformed u-coordinate (position along path after wrapping)
     // For an elliptical cylinder, we need to adjust the u-coordinate as well
