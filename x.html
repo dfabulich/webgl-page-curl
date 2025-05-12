@@ -52,6 +52,14 @@
         const FRUSTUM_SIZE = 5; 
         let isAnimatingRedPlaneOut = false;
 
+        let curlParameters = {
+            curlAmount: 0.0, // 0 (flat) to target value (e.g., 1.0 or 1.5 for full curl and move away)
+            curlRadius: 0.5, 
+            curlAngle: Math.PI / 4, // Angle of the curl axis (45 degrees for bottom-right curl)
+            animationSpeed: 0.01,
+            curlTargetAmount: 1.5 // Value of curlAmount to consider animation complete
+        };
+
         async function init() {
             const htmlContentDiv = document.getElementById('html-content');
             try {
@@ -71,8 +79,10 @@
 
             scene = new THREE.Scene();
             const aspect = window.innerWidth / window.innerHeight;
-            camera = new THREE.OrthographicCamera(FRUSTUM_SIZE * aspect / -2, FRUSTUM_SIZE * aspect / 2, FRUSTUM_SIZE / 2, FRUSTUM_SIZE / -2, 0.01, 100);
-            camera.position.z = 1;
+            const fov = 75; // Field of View
+            camera = new THREE.PerspectiveCamera(fov, aspect, 0.1, 1000);
+            // Adjust camera Z to fit FRUSTUM_SIZE plane in view
+            camera.position.z = (FRUSTUM_SIZE / 2) / Math.tan(THREE.MathUtils.degToRad(fov / 2));
 
             renderer = new THREE.WebGLRenderer({ alpha: true }); 
             renderer.setPixelRatio(window.devicePixelRatio);
@@ -88,6 +98,13 @@
             blueScreenshotPlaneMesh = new THREE.Mesh(planeGeometry.clone(), new THREE.MeshBasicMaterial({ transparent: true, opacity: 0 }));
             blueScreenshotPlaneMesh.position.z = -0.05; 
             scene.add(blueScreenshotPlaneMesh);
+
+            // Add lighting
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+            scene.add(ambientLight);
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(1, 1, 2);
+            scene.add(directionalLight);
 
             window.addEventListener('resize', onWindowResize, false);
 
@@ -120,10 +137,15 @@
                     planeMesh.material.dispose();
                     const redTexture = new THREE.CanvasTexture(redCanvas);
                     redTexture.needsUpdate = true;
-                    planeMesh.material = new THREE.MeshBasicMaterial({ map: redTexture, transparent: true });
+                    planeMesh.material = new THREE.MeshStandardMaterial({ 
+                        map: redTexture, 
+                        transparent: true, 
+                        metalness: 0.2, 
+                        roughness: 0.8 
+                    });
                     planeMesh.material.opacity = 1;
                     planeMesh.position.y = 0; 
-                    console.log("Red screenshot applied to canvas plane.");
+                    console.log("Red screenshot applied to canvas plane with StandardMaterial.");
 
                     // 3. Switch underlying DOM to blue & capture blue screenshot (DOM is covered by canvas)
                     htmlContentDiv.innerHTML = blueHTMLBodyContent;
@@ -160,15 +182,16 @@
 
         function onWindowResize() {
             const aspect = window.innerWidth / window.innerHeight;
-            camera.left = FRUSTUM_SIZE * aspect / -2;
-            camera.right = FRUSTUM_SIZE * aspect / 2;
-            camera.top = FRUSTUM_SIZE / 2;
-            camera.bottom = FRUSTUM_SIZE / -2;
+            const fov = 75; // Ensure this matches init if used for z-calculation
+            camera.aspect = aspect;
+            // If fov or FRUSTUM_SIZE changes, camera.position.z might need re-evaluation here too
+            // camera.position.z = (FRUSTUM_SIZE / 2) / Math.tan(THREE.MathUtils.degToRad(fov / 2));
             camera.updateProjectionMatrix();
 
             renderer.setSize(window.innerWidth, window.innerHeight);
 
-            const newPlaneGeometry = new THREE.PlaneGeometry(FRUSTUM_SIZE * aspect, FRUSTUM_SIZE);
+            // Ensure new planes are created with segments for deformation
+            const newPlaneGeometry = new THREE.PlaneGeometry(FRUSTUM_SIZE * aspect, FRUSTUM_SIZE, 32, 32);
             if (planeMesh) {
                 planeMesh.geometry.dispose();
                 planeMesh.geometry = newPlaneGeometry.clone();
@@ -180,14 +203,103 @@
             newPlaneGeometry.dispose();
         }
 
+        // Function to deform the plane geometry for the curl effect
+        function updatePageCurl(geometry, amount, radius, angle) {
+            const positions = geometry.attributes.position;
+            const vertex = new THREE.Vector3();
+            // Use actual geometry dimensions, not FRUSTUM_SIZE directly here,
+            // as geometry might have been created with aspect ratio applied.
+            const geomWidth = geometry.parameters.width;
+            const geomHeight = geometry.parameters.height;
+            const halfWidth = geomWidth / 2;
+            const halfHeight = geomHeight / 2;
+
+            // Curl origin (bottom-right corner of the plane, in its local coordinates)
+            const curlOriginX = halfWidth;
+            const curlOriginY = -halfHeight;
+
+            for (let i = 0; i < positions.count; i++) {
+                vertex.fromBufferAttribute(positions, i);
+                const originalX = vertex.x;
+                const originalY = vertex.y;
+                const originalZ = 0; // Assuming plane starts flat at z=0 in its local space
+
+                let new_x = originalX;
+                let new_y = originalY;
+                let new_z = originalZ;
+
+                // Transform vertex to be relative to curl origin
+                let dx = originalX - curlOriginX;
+                let dy = originalY - curlOriginY;
+
+                // Rotate coordinates to align with curl axis
+                let x_rotated = dx * Math.cos(angle) + dy * Math.sin(angle);
+                let y_rotated = -dx * Math.sin(angle) + dy * Math.cos(angle);
+
+                // Effective distance along the page affected by the curl
+                // This limit moves as 'amount' increases
+                const curlInfluenceLimit = amount * (Math.sqrt(geomWidth * geomWidth + geomHeight * geomHeight) * 0.75); // Adjust 0.75 factor as needed
+
+                if (x_rotated > 0 && x_rotated < curlInfluenceLimit) {
+                    let distToCurlLine = x_rotated;
+
+                    // Apply a falloff based on y_rotated (distance from the curl's direct path)
+                    // This makes the curl less pronounced further from the diagonal axis of the curl.
+                    // The exact falloff shape can be experimented with.
+                    let y_falloff_distance = Math.abs(y_rotated);
+                    let curlStrengthFalloff = Math.max(0, 1 - (y_falloff_distance / (geomWidth * 0.5))); // Softer falloff
+
+                    if (distToCurlLine < radius * Math.PI * curlStrengthFalloff) { 
+                        if (curlStrengthFalloff > 0.01) { // Only calculate if there's some strength
+                            let currentRadius = radius * curlStrengthFalloff;
+                            let theta = distToCurlLine / currentRadius;
+
+                            let curled_x_rotated = currentRadius * Math.sin(theta);
+                            let curled_z_rotated = currentRadius * (1 - Math.cos(theta));
+                             curled_z_rotated += amount * geomHeight * 0.2; // Lift the whole curl up as it forms
+
+                            // Rotate back to original coordinate system
+                            new_x = (curled_x_rotated * Math.cos(-angle) + y_rotated * Math.sin(-angle)) + curlOriginX;
+                            new_y = (-curled_x_rotated * Math.sin(-angle) + y_rotated * Math.cos(-angle)) + curlOriginY;
+                            new_z = curled_z_rotated;
+                        }
+                    } else if (curlStrengthFalloff > 0.01) { // Flat part being lifted after the cylindrical curl
+                        let currentRadius = radius * curlStrengthFalloff;
+                        let lifted_z = 2 * currentRadius;
+                        lifted_z += amount * geomHeight * 0.2; // Lift the whole curl up
+
+                        // The x_rotated part continues along the tangent from where the cylinder part would have ended
+                        // For simplicity, let's just keep it somewhat consistent with the curl direction for now
+                        // This part of the math might need refinement for a very specific unrolling motion.
+                        let tangent_extension = distToCurlLine - (radius * Math.PI * curlStrengthFalloff);
+                        let curled_x_rotated = currentRadius * Math.sin(Math.PI) + tangent_extension; 
+
+                        new_x = (curled_x_rotated * Math.cos(-angle) + y_rotated * Math.sin(-angle)) + curlOriginX;
+                        new_y = (-curled_x_rotated * Math.sin(-angle) + y_rotated * Math.cos(-angle)) + curlOriginY;
+                        new_z = lifted_z;
+                    }
+                }
+                positions.setXYZ(i, new_x, new_y, new_z);
+            }
+            positions.needsUpdate = true;
+            geometry.computeVertexNormals();
+        }
+
         function animate() {
             requestAnimationFrame(animate);
 
             if (isAnimatingRedPlaneOut && planeMesh) {
-                planeMesh.position.y += 0.05; 
+                curlParameters.curlAmount += curlParameters.animationSpeed;
 
-                if ((planeMesh.position.y - FRUSTUM_SIZE / 2) > camera.top) {
-                    console.log("Red screenshot animated out. Blue screenshot plane is visible on canvas.");
+                updatePageCurl(
+                    planeMesh.geometry, 
+                    curlParameters.curlAmount, 
+                    curlParameters.curlRadius, 
+                    curlParameters.curlAngle
+                );
+
+                if (curlParameters.curlAmount > curlParameters.curlTargetAmount) {
+                    console.log("Red screenshot curled out. Blue screenshot plane is visible on canvas.");
                     if (planeMesh.material.map) planeMesh.material.map.dispose();
                     planeMesh.material.dispose();
                     scene.remove(planeMesh);
@@ -205,11 +317,12 @@
                         blueScreenshotPlaneMesh = null;
                     }
                     isAnimatingRedPlaneOut = false;
+                    curlParameters.curlAmount = 0.0; // Reset for next time
 
                     // Prepare for next transition: re-create planes if they were nulled
                     // This might be better done at the start of go() or by not nulling them but just hiding/making transparent
                     const aspect = window.innerWidth / window.innerHeight;
-                    const planeGeometry = new THREE.PlaneGeometry(FRUSTUM_SIZE * aspect, FRUSTUM_SIZE);
+                    const planeGeometry = new THREE.PlaneGeometry(FRUSTUM_SIZE * aspect, FRUSTUM_SIZE, 32, 32);
                     planeMesh = new THREE.Mesh(planeGeometry.clone(), new THREE.MeshBasicMaterial({ transparent: true, opacity: 0 }));
                     planeMesh.position.z = 0;
                     scene.add(planeMesh);
@@ -217,8 +330,7 @@
                     blueScreenshotPlaneMesh = new THREE.Mesh(planeGeometry.clone(), new THREE.MeshBasicMaterial({ transparent: true, opacity: 0 }));
                     blueScreenshotPlaneMesh.position.z = -0.05;
                     scene.add(blueScreenshotPlaneMesh);
-                    planeGeometry.dispose();
-
+                    // planeGeometry.dispose(); // Disposing the template geometry
                 }
             }
             if (renderer.domElement.style.display !== 'none') { // Only render if canvas is visible
