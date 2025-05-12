@@ -6,24 +6,22 @@ const geomHeight = 8;
 const curlTargetAmount = 1.0;
 
 function calculate({
-    originalX,
-    originalY,
-    amount,
-    _geomWidth = geomWidth,
-    _geomHeight = geomHeight,
+  originalX,
+  originalY,
+  amount,
+  _geomWidth = geomWidth,
+  _geomHeight = geomHeight,
 }) {
-  return calculateCurledVertexPosition(
-    originalX, originalY, _geomWidth, _geomHeight, amount
-);
+  return calculateCurledVertexPosition(originalX, originalY, _geomWidth, _geomHeight, amount);
 }
 
 describe('calculateCurledVertexPosition', () => {
   it('should not change vertex position if amount is 0', () => {
-
     const result = calculate({
-        originalX: 1, 
-        originalY: 1, 
-        amount: 0});
+      originalX: 1,
+      originalY: 1,
+      amount: 0,
+    });
 
     expect(result.x).toBe(1);
     expect(result.y).toBe(1);
@@ -31,50 +29,49 @@ describe('calculateCurledVertexPosition', () => {
   });
 
   it('should lift the bottom-right corner up by exactly half geomHeight when amount is half of curlTargetAmount', () => {
-
     const result = calculate({
-        originalX: geomWidth / 2, 
-        originalY: -geomHeight / 2, 
-        amount: curlTargetAmount / 2});
+      originalX: geomWidth / 2,
+      originalY: -geomHeight / 2,
+      amount: curlTargetAmount / 2,
+    });
 
     // Expectation: the new Y position is greater than its original Y + half the geometry height.
     // originalY_bottom_right = -geomHeight / 2.
     // originalY_bottom_right + geomHeight / 2 = 0.
     // So, we expect result.y to be > 0.
     expect(result.y).toBeGreaterThan(0);
-    
+
     // For debugging, let's also see what the values are:
     // console.log(`Test: Corner lift check - OriginalY: ${originalY}, ResultY: ${result.y}, ResultZ: ${result.z}`);
   });
 
   it('should lift the bottom-left corner above y=0 when amount is 0.8 * curlTargetAmount', () => {
-
     const result = calculate({
-        originalX: -geomWidth / 2, 
-        originalY: -geomHeight / 2, 
-        amount: 0.8 * curlTargetAmount});
+      originalX: -geomWidth / 2,
+      originalY: -geomHeight / 2,
+      amount: 0.8 * curlTargetAmount,
+    });
 
     //console.log(`Test: Bottom-left lift check - OriginalY: ${originalY}, ResultY: ${result.y}, ResultZ: ${result.z}, Amount: ${amount}`);
 
     // Expectation: the new Y position is greater than 0.
     // Original Y for bottom-left is -geomHeight / 2.
     expect(result.y).toBeGreaterThan(0);
-    
   });
 
   it('should have the bottom-right corner higher than the bottom-left corner at 25% curl amount', () => {
     const amount = curlTargetAmount * 0.25;
 
     const bottomRight = calculate({
-        originalX: geomWidth / 2,
-        originalY: -geomHeight / 2,
-        amount: amount
+      originalX: geomWidth / 2,
+      originalY: -geomHeight / 2,
+      amount: amount,
     });
 
     const bottomLeft = calculate({
-        originalX: -geomWidth / 2,
-        originalY: -geomHeight / 2,
-        amount: amount
+      originalX: -geomWidth / 2,
+      originalY: -geomHeight / 2,
+      amount: amount,
     });
 
     // For debugging
@@ -91,15 +88,15 @@ describe('calculateCurledVertexPosition', () => {
     const topLeftOriginalY = geomHeight / 2;
 
     const topRightResult = calculate({
-        originalX: topRightOriginalX,
-        originalY: topRightOriginalY,
-        amount: amount
+      originalX: topRightOriginalX,
+      originalY: topRightOriginalY,
+      amount: amount,
     });
 
     const topLeftResult = calculate({
-        originalX: topLeftOriginalX,
-        originalY: topLeftOriginalY,
-        amount: amount
+      originalX: topLeftOriginalX,
+      originalY: topLeftOriginalY,
+      amount: amount,
     });
 
     expect(topRightResult.x).toBe(topRightOriginalX);
@@ -109,4 +106,4 @@ describe('calculateCurledVertexPosition', () => {
   });
 
   // We can add more tests here later
-}); 
+});

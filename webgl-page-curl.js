@@ -2,116 +2,127 @@ import { calculateCurledVertexPosition } from './curlMath.js';
 
 // Function to store the original positions from a geometry
 function storeOriginalPositions(geometry, logging) {
-    const positions = geometry.attributes.position;
-    const originalPositions = new Float32Array(positions.count * 3);
-    
-    for (let i = 0; i < positions.count; i++) {
-        originalPositions[i * 3] = positions.getX(i);
-        originalPositions[i * 3 + 1] = positions.getY(i);
-        originalPositions[i * 3 + 2] = positions.getZ(i);
-    }
-    
-    // Debug: Log first vertex from original store
-    if (logging) console.log(`Stored original first vertex: (${originalPositions[0].toFixed(2)}, ${originalPositions[1].toFixed(2)}, ${originalPositions[2].toFixed(2)})`);
-    
-    return originalPositions;
+  const positions = geometry.attributes.position;
+  const originalPositions = new Float32Array(positions.count * 3);
+
+  for (let i = 0; i < positions.count; i++) {
+    originalPositions[i * 3] = positions.getX(i);
+    originalPositions[i * 3 + 1] = positions.getY(i);
+    originalPositions[i * 3 + 2] = positions.getZ(i);
+  }
+
+  // Debug: Log first vertex from original store
+  if (logging)
+    console.log(
+      `Stored original first vertex: (${originalPositions[0].toFixed(2)}, ${originalPositions[1].toFixed(2)}, ${originalPositions[2].toFixed(2)})`
+    );
+
+  return originalPositions;
 }
 
 // Function to deform the plane geometry for the curl effect
 function updatePageCurl(state) {
-    const amount = state.curlAmount;
-    const geometry = state.planeMesh.geometry;
-    const positions = geometry.attributes.position;
-    const geomWidth = geometry.parameters.width;
-    const geomHeight = geometry.parameters.height;
+  const amount = state.curlAmount;
+  const geometry = state.planeMesh.geometry;
+  const positions = geometry.attributes.position;
+  const geomWidth = geometry.parameters.width;
+  const geomHeight = geometry.parameters.height;
 
-    // Debug: Check if originalVertexPositions is defined
-    if (!state.originalVertexPositions) {
-        console.error("ERROR: originalVertexPositions is undefined! Creating it now...");
-        state.originalVertexPositions = storeOriginalPositions(geometry, state.logging);
-    }
+  // Debug: Check if originalVertexPositions is defined
+  if (!state.originalVertexPositions) {
+    console.error('ERROR: originalVertexPositions is undefined! Creating it now...');
+    state.originalVertexPositions = storeOriginalPositions(geometry, state.logging);
+  }
 
-    // Verify we have the correct number of originalVertexPositions 
-    if (state.originalVertexPositions.length !== positions.count * 3) {
-        console.error(`ERROR: originalVertexPositions.length (${state.originalVertexPositions.length}) doesn't match expected (${positions.count * 3}). Regenerating...`);
-        state.originalVertexPositions = storeOriginalPositions(geometry, state.logging);
-    }
+  // Verify we have the correct number of originalVertexPositions
+  if (state.originalVertexPositions.length !== positions.count * 3) {
+    console.error(
+      `ERROR: originalVertexPositions.length (${state.originalVertexPositions.length}) doesn't match expected (${positions.count * 3}). Regenerating...`
+    );
+    state.originalVertexPositions = storeOriginalPositions(geometry, state.logging);
+  }
 
-    // Use stored original positions for each transformation
-    for (let i = 0; i < positions.count; i++) {
-        // Read from originalVertexPositions instead of current positions
-        const x = state.originalVertexPositions[i * 3];
-        const y = state.originalVertexPositions[i * 3 + 1];
-        const z = state.originalVertexPositions[i * 3 + 2]; // Usually 0 for a fresh PlaneGeometry
-        
-        const newPosition = calculateCurledVertexPosition(
-            x, y, geomWidth, geomHeight, amount
-        );
-        
-        positions.setXYZ(i, newPosition.x, newPosition.y, newPosition.z);
-    }
-    
-    positions.needsUpdate = true;
-    geometry.computeVertexNormals();
-    state.renderer.render(state.scene, state.camera);
+  // Use stored original positions for each transformation
+  for (let i = 0; i < positions.count; i++) {
+    // Read from originalVertexPositions instead of current positions
+    const x = state.originalVertexPositions[i * 3];
+    const y = state.originalVertexPositions[i * 3 + 1];
+    const z = state.originalVertexPositions[i * 3 + 2]; // Usually 0 for a fresh PlaneGeometry
+
+    const newPosition = calculateCurledVertexPosition(x, y, geomWidth, geomHeight, amount);
+
+    positions.setXYZ(i, newPosition.x, newPosition.y, newPosition.z);
+  }
+
+  positions.needsUpdate = true;
+  geometry.computeVertexNormals();
+  state.renderer.render(state.scene, state.camera);
 }
 
 // Animation loop
 function animate(timestamp, state) {
-    if (state.done) return;
-    requestAnimationFrame((timestamp) => animate(timestamp, state));
-    if (!state.startTime) state.startTime = timestamp;
+  if (state.done) return;
+  requestAnimationFrame(timestamp => animate(timestamp, state));
+  if (!state.startTime) state.startTime = timestamp;
 
-    const elapsedTime = timestamp - state.startTime;
-    const progress = elapsedTime / state.durationInMs;
-    state.curlAmount = progress * state.curlTargetAmount;
-    
-    if (state.logging) console.log(`curlAmount: ${state.curlAmount.toFixed(3)}, progress: ${(progress * 100).toFixed(1)}%`);
+  const elapsedTime = timestamp - state.startTime;
+  const progress = elapsedTime / state.durationInMs;
+  state.curlAmount = progress * state.curlTargetAmount;
 
-    try {
-        updatePageCurl(state);
-    } catch (error) {
-        state.done = true;
-        state.reject(error);
-    }
+  if (state.logging)
+    console.log(
+      `curlAmount: ${state.curlAmount.toFixed(3)}, progress: ${(progress * 100).toFixed(1)}%`
+    );
 
-    if (progress >= 1) {
-        if (state.logging) console.log("Animation complete");
-        state.done = true;        
-        state.resolve();
-    }
+  try {
+    updatePageCurl(state);
+  } catch (error) {
+    state.done = true;
+    state.reject(error);
+  }
+
+  if (progress >= 1) {
+    if (state.logging) console.log('Animation complete');
+    state.done = true;
+    state.resolve();
+  }
 }
 
 /**
  * Captures a screenshot of the parent element of the given element.
- * 
+ *
  * @param {HTMLElement} element - The element to capture the screenshot of.
  * @param {Function} html2canvas - The html2canvas library.
  * @param {Object} options - The options object.
  * @param {boolean} [options.logging=false] - Enable verbose logging.
  * @returns {Promise<HTMLCanvasElement>} A promise that resolves to a canvas element containing the screenshot.
  */
-export async function captureScreenshotOfParentElement(element, html2canvas, options = {logging: false}) {
-    const parentElement = element.parentElement;
-    const rect = parentElement.getBoundingClientRect();
-    const width = rect.width;
-    const height = rect.height;
-    const canvas = await html2canvas(parentElement, { 
-        useCORS: true, 
-        logging: options.logging, 
-        width: width, 
-        height: height, 
-        x:0, y:0, 
-        scrollX: -parentElement.scrollLeft, 
-        scrollY: -parentElement.scrollTop 
-    });
-    if (options.logging) console.log("Screenshot captured", canvas.outerHTML);
-    return canvas;
+export async function captureScreenshotOfParentElement(
+  element,
+  html2canvas,
+  options = { logging: false }
+) {
+  const parentElement = element.parentElement;
+  const rect = parentElement.getBoundingClientRect();
+  const width = rect.width;
+  const height = rect.height;
+  const canvas = await html2canvas(parentElement, {
+    useCORS: true,
+    logging: options.logging,
+    width: width,
+    height: height,
+    x: 0,
+    y: 0,
+    scrollX: -parentElement.scrollLeft,
+    scrollY: -parentElement.scrollTop,
+  });
+  if (options.logging) console.log('Screenshot captured', canvas.outerHTML);
+  return canvas;
 }
 
 /**
  * Performs a page curl transition on an element.
- * 
+ *
  * @param {Object} args - The arguments object.
  * @param {Object} args.THREE - The THREE.js library.
  * @param {HTMLElement} args.element - The element to apply the curl effect to.
@@ -124,161 +135,169 @@ export async function captureScreenshotOfParentElement(element, html2canvas, opt
  * @throws {Error} If required arguments are missing or parent element is not positioned correctly.
  */
 export async function curl(args) {
-    // Validate required arguments
-    if (!args.THREE) {
-        throw new Error("Missing required argument: THREE (THREE.js library)");
-    }
-    if (!args.element) {
-        throw new Error("Missing required argument: element");
-    }
-    if (!args.screenshotCanvas) {
-        throw new Error("Missing required argument: screenshotCanvas");
-    }
-    if (!args.nextPageContent) {
-        throw new Error("Missing required argument: nextPageContent");
+  // Validate required arguments
+  if (!args.THREE) {
+    throw new Error('Missing required argument: THREE (THREE.js library)');
+  }
+  if (!args.element) {
+    throw new Error('Missing required argument: element');
+  }
+  if (!args.screenshotCanvas) {
+    throw new Error('Missing required argument: screenshotCanvas');
+  }
+  if (!args.nextPageContent) {
+    throw new Error('Missing required argument: nextPageContent');
+  }
+
+  const { THREE, element, screenshotCanvas, nextPageContent } = args;
+
+  let resolve, reject;
+  const promise = new Promise((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  const state = {
+    done: false,
+    logging: args.logging ?? false,
+    durationInMs: args.durationInMs ?? 1000,
+    curlTargetAmount: args.curlTargetAmount ?? 1.1,
+    curlAmount: 0.0,
+    startTime: null,
+    scene: null,
+    camera: null,
+    renderer: null,
+    planeMesh: null,
+    originalVertexPositions: null,
+    resolve: resolve,
+    reject: reject,
+  };
+
+  try {
+    if (state.logging) console.log('Starting transition...');
+
+    const parentElement = element.parentElement;
+    if (
+      parentElement !== document.body &&
+      window.getComputedStyle(parentElement).position !== 'relative'
+    ) {
+      throw new Error(
+        'Parent element must have position: relative. The curl animation will be appended to the parent element with absolute positioning, relative to the parent element.'
+      );
     }
 
-    const { THREE, element, screenshotCanvas, nextPageContent } = args;
+    const rect = parentElement.getBoundingClientRect();
+    const width = rect.width;
+    const height = rect.height;
+    const aspect = width / height;
 
-    let resolve, reject;
-    const promise = new Promise((res, rej) => {
-        resolve = res;
-        reject = rej;
+    if (state.logging) console.log({ width, height, aspect });
+
+    state.scene = new THREE.Scene();
+    const fov = 75; // Field of View
+    const FRUSTUM_SIZE = 5;
+    state.camera = new THREE.PerspectiveCamera(fov, aspect, 0.1, 1000);
+    // Adjust camera Z to fit FRUSTUM_SIZE plane in view
+    state.camera.position.z = FRUSTUM_SIZE / 2 / Math.tan(THREE.MathUtils.degToRad(fov / 2));
+
+    state.renderer = new THREE.WebGLRenderer({ alpha: true });
+    state.renderer.setPixelRatio(window.devicePixelRatio);
+    state.renderer.setSize(width, height);
+    parentElement.appendChild(state.renderer.domElement);
+
+    // Set all necessary styles directly on canvas to position it exactly over the element
+    const canvasElement = state.renderer.domElement;
+
+    const elementZIndex = Number(window.getComputedStyle(element).zIndex) || 0;
+    const canvasZIndex = elementZIndex + 1;
+
+    Object.assign(canvasElement.style, {
+      position: 'absolute',
+      top: '0',
+      left: '0',
+      width: `${width}px`,
+      height: `${height}px`,
+      zIndex: canvasZIndex,
+      pointerEvents: 'none', // Allow clicks to pass through
+      backgroundColor: 'transparent',
     });
-    const state = {
-        done: false,
-        logging: args.logging ?? false,
-        durationInMs: args.durationInMs ?? 1000,
-        curlTargetAmount: args.curlTargetAmount ?? 1.1,
-        curlAmount: 0.0,
-        startTime: null,
-        scene: null,
-        camera: null,
-        renderer: null,
-        planeMesh: null,
-        originalVertexPositions: null,
-        resolve: resolve,
-        reject: reject
-    };
 
-    try {
-        if (state.logging) console.log("Starting transition...");
+    // Create plane for screenshot with element's aspect ratio
+    const planeGeometry = new THREE.PlaneGeometry(FRUSTUM_SIZE * aspect, FRUSTUM_SIZE, 32, 32);
+    state.planeMesh = new THREE.Mesh(
+      planeGeometry.clone(),
+      new THREE.MeshBasicMaterial({
+        transparent: true,
+        opacity: 0,
+        side: THREE.DoubleSide,
+      })
+    );
+    state.planeMesh.position.z = 0;
+    state.scene.add(state.planeMesh);
 
-        const parentElement = element.parentElement;
-        if (parentElement !== document.body && window.getComputedStyle(parentElement).position !== 'relative') {
-            throw new Error("Parent element must have position: relative. The curl animation will be appended to the parent element with absolute positioning, relative to the parent element.");
-        }
-        
-        const rect = parentElement.getBoundingClientRect();
-        const width = rect.width;
-        const height = rect.height;
-        const aspect = width / height;
-        
-        if (state.logging) console.log({width, height, aspect});
+    // Add lighting
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+    state.scene.add(ambientLight);
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    directionalLight.position.set(1, 1, 2);
+    state.scene.add(directionalLight);
 
-        state.scene = new THREE.Scene();
-        const fov = 75; // Field of View
-        const FRUSTUM_SIZE = 5;
-        state.camera = new THREE.PerspectiveCamera(fov, aspect, 0.1, 1000);
-        // Adjust camera Z to fit FRUSTUM_SIZE plane in view
-        state.camera.position.z = (FRUSTUM_SIZE / 2) / Math.tan(THREE.MathUtils.degToRad(fov / 2));
+    // Store original positions
+    state.originalVertexPositions = storeOriginalPositions(state.planeMesh.geometry, state.logging);
 
-        state.renderer = new THREE.WebGLRenderer({ alpha: true }); 
-        state.renderer.setPixelRatio(window.devicePixelRatio);
-        state.renderer.setSize(width, height);
-        parentElement.appendChild(state.renderer.domElement);
-        
-        // Set all necessary styles directly on canvas to position it exactly over the element
-        const canvasElement = state.renderer.domElement;
-        
-        const elementZIndex = Number(window.getComputedStyle(element).zIndex) || 0;
-        const canvasZIndex = elementZIndex + 1;
+    // Apply screenshot to canvas plane
+    const texture = new THREE.CanvasTexture(screenshotCanvas);
+    texture.needsUpdate = true;
+    state.planeMesh.material = new THREE.MeshBasicMaterial({
+      map: texture,
+      transparent: false,
+      side: THREE.DoubleSide,
+    });
+    state.planeMesh.material.opacity = 1;
+    if (state.logging) console.log('Screenshot applied to canvas plane.');
 
-        Object.assign(canvasElement.style, {
-            position: 'absolute',
-            top: '0',
-            left: '0',
-            width: `${width}px`,
-            height: `${height}px`,
-            zIndex: canvasZIndex,
-            pointerEvents: 'none', // Allow clicks to pass through
-            backgroundColor: 'transparent'
-        });
-        
-        // Create plane for screenshot with element's aspect ratio
-        const planeGeometry = new THREE.PlaneGeometry(FRUSTUM_SIZE * aspect, FRUSTUM_SIZE, 32, 32);
-        state.planeMesh = new THREE.Mesh(planeGeometry.clone(), new THREE.MeshBasicMaterial({ 
-            transparent: true, 
-            opacity: 0,
-            side: THREE.DoubleSide
-        }));
-        state.planeMesh.position.z = 0; 
-        state.scene.add(state.planeMesh);
-        
-        // Add lighting
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
-        state.scene.add(ambientLight);
-        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-        directionalLight.position.set(1, 1, 2);
-        state.scene.add(directionalLight);
-        
-        // Store original positions
-        state.originalVertexPositions = storeOriginalPositions(state.planeMesh.geometry, state.logging);
-                
-        // Apply screenshot to canvas plane
-        const texture = new THREE.CanvasTexture(screenshotCanvas);
-        texture.needsUpdate = true;
-        state.planeMesh.material = new THREE.MeshBasicMaterial({ 
-            map: texture, 
-            transparent: false, 
-            side: THREE.DoubleSide
-        });
-        state.planeMesh.material.opacity = 1;
-        if (state.logging) console.log("Screenshot applied to canvas plane.");
-
-        // Switch underlying DOM to next page (it's covered by the canvas)
-        if (typeof nextPageContent === 'string') {
-            element.innerHTML = nextPageContent;
-        } else {
-            nextPageContent(element);
-        }
-        if (state.logging) console.log("Underlying DOM switched to next page content."); 
-
-         // Start animation loop
-        requestAnimationFrame((timestamp) => animate(timestamp, state));
-        await promise;
-    } finally {
-        // Clean up all resources regardless of success or failure
-                
-        // Clean up THREE.js resources
-        if (state.planeMesh) {
-            if (state.planeMesh.geometry) state.planeMesh.geometry.dispose();
-            if (state.planeMesh.material) {
-                if (state.planeMesh.material.map) state.planeMesh.material.map.dispose();
-                state.planeMesh.material.dispose();
-            }
-            state.planeMesh = null;
-        }
-        
-        if (state.scene) {
-            state.scene = null;
-        }
-        
-        // Dispose of renderer
-        if (state.renderer) {
-            state.renderer.dispose();
-            // In case the animation didn't complete and remove the canvas
-            if (state.renderer.domElement && state.renderer.domElement.parentNode) {
-                state.renderer.domElement.remove();
-            }
-            state.renderer = null;
-        }
-
-        state.done = true;
-        state.scene = null;
-        state.camera = null;
-        state.originalVertexPositions = null;
-        
-        if (state.logging) console.log("All resources cleaned up");
+    // Switch underlying DOM to next page (it's covered by the canvas)
+    if (typeof nextPageContent === 'string') {
+      element.innerHTML = nextPageContent;
+    } else {
+      nextPageContent(element);
     }
+    if (state.logging) console.log('Underlying DOM switched to next page content.');
+
+    // Start animation loop
+    requestAnimationFrame(timestamp => animate(timestamp, state));
+    await promise;
+  } finally {
+    // Clean up all resources regardless of success or failure
+
+    // Clean up THREE.js resources
+    if (state.planeMesh) {
+      if (state.planeMesh.geometry) state.planeMesh.geometry.dispose();
+      if (state.planeMesh.material) {
+        if (state.planeMesh.material.map) state.planeMesh.material.map.dispose();
+        state.planeMesh.material.dispose();
+      }
+      state.planeMesh = null;
+    }
+
+    if (state.scene) {
+      state.scene = null;
+    }
+
+    // Dispose of renderer
+    if (state.renderer) {
+      state.renderer.dispose();
+      // In case the animation didn't complete and remove the canvas
+      if (state.renderer.domElement && state.renderer.domElement.parentNode) {
+        state.renderer.domElement.remove();
+      }
+      state.renderer = null;
+    }
+
+    state.done = true;
+    state.scene = null;
+    state.camera = null;
+    state.originalVertexPositions = null;
+
+    if (state.logging) console.log('All resources cleaned up');
+  }
 }
