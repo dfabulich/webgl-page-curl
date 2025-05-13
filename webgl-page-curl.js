@@ -183,7 +183,7 @@ function animate(timestamp, state) {
 
   const elapsedTime = timestamp - state.startTime;
   const progress = Math.min(elapsedTime / state.durationInMs, 1.0); // Ensure progress doesn't exceed 1
-  state.curlAmount = progress * state.curlTargetAmount;
+  state.curlAmount = progress;
 
   if (state.logging)
     console.log(
@@ -251,7 +251,6 @@ export async function captureScreenshotOfParentElement(
  * @param {HTMLCanvasElement} args.screenshotCanvas - The canvas containing the screenshot of the element.
  * @param {(string|Function)} args.nextPageContent - HTML string or function to update the element content after curl.
  * @param {number} [args.durationInMs=1000] - Duration of the animation in milliseconds.
- * @param {number} [args.curlTargetAmount=1.1] - Amount of curl to reach before completion.
  * @param {boolean} [args.logging=false] - Enable verbose logging.
  * @param {number} [args.curlRadius=0.1] - Radius of the page curl (in normalized coordinates, relative to hypotenuse).
  * @returns {Promise<void>} A promise that resolves when the animation completes.
@@ -283,8 +282,6 @@ export async function curl(args) {
     done: false,
     logging: args.logging ?? false,
     durationInMs: args.durationInMs ?? 1000,
-    // curlTargetAmount defines how far the curl progresses (1.0 = TL corner, >1.0 goes further)
-    curlTargetAmount: args.curlTargetAmount ?? 1.4, // Increased default for shader 
     curlAmount: 0.0, // Current state of the curl animation for the shader
     curlRadius: args.curlRadius ?? 0.2, // Default curl radius for shader
     startTime: null,
