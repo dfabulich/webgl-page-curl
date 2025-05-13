@@ -22,15 +22,13 @@
     <!-- html2canvas library -->
   </head>
   <body>
-    <div id="html-content"></div>
+    <!-- <div id="html-content"></div> -->
 
     <!-- Or, for example, wrap the content in a curl container.
      Remember to set `position: relative;` on the curl container! -->
-    <!--
     <div id="curl-container">
         <div id="html-content"></div>
     </div>
-    -->
 
     <script type="module">
       import html2canvas from 'https://esm.sh/html2canvas';
@@ -67,7 +65,7 @@
           element: htmlContentDiv,
           screenshotCanvas: screenshotCanvas,
           nextPageContent: blueHTMLBodyContent,
-          durationInMs: 5000,
+          durationInMs: 1000,
           logging: true,
         });
         console.log('Curl complete.');
