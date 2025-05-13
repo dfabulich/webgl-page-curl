@@ -1,6 +1,6 @@
 {
   "name": "webgl-page-curl",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "3D page-curl animation of a DOM element",
   "main": "webgl-page-curl.js",
   "type": "module",
