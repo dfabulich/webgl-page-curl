@@ -4,6 +4,10 @@
 
 It works by first taking a screenshot of the element, rendering that into a `<canvas>` on top of the element, and doing a WebGL animation on that `<canvas>` to make the screenshot appear to peel/curl away, revealing the element below.
 
+## Example
+
+View a [live example](https://dfabulich.github.io/webgl-page-curl/).
+
 https://github.com/user-attachments/assets/9dc62f56-7b83-4e66-ad66-2b6777869b3d
 
 ## Prerequisites
