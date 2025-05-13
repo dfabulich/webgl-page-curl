@@ -32,7 +32,7 @@ void main() {
 
     // Vector representing the full direction and length of the curl animation path
     vec2 curlPathVector = curlEndTargetPos - curlStartPos; // (-1.0, 1.0)
-    float curlPathLength = length(curlPathVector); // sqrt(2)
+    float curlPathLength = length(curlPathVector) + radius; // sqrt(2)
     vec2 curlPathDir = normalize(curlPathVector); // Direction from BR to TL
 
     // Calculate the current position of the center of the curl axis based on curlAmount
