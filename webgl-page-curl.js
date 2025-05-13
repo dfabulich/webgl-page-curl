@@ -178,13 +178,14 @@ void main() {
         // Check if the calculated back-face UV (p) is within the page bounds
         if (isInBounds(p)) {
             // Back side coordinate 'p' is valid. Use it for sampling.
-            finalUV = p;
+            color = texture2D(frontTexture, p);
+            color.rgb *= 0.9;
         } else {
             // If 'p' is out of bounds, use the original fragment UV.
-            finalUV = vUv;
+            color = texture2D(frontTexture, vUv);
         }
         // Sample the front texture with the determined UV.
-        color = texture2D(frontTexture, finalUV);
+        
     }
 
     // Final check: Discard if the calculated UV for the visible face ended up out of bounds.
