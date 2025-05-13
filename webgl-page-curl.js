@@ -364,6 +364,7 @@ export async function curl(args) {
     const parentElement = element.parentElement;
     if (
       parentElement !== document.body &&
+      parentElement !== document.documentElement &&
       window.getComputedStyle(parentElement).position !== 'relative'
     ) {
       throw new Error(

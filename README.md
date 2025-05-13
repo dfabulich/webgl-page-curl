@@ -32,11 +32,13 @@ const screenshotCanvas = await captureScreenshotOfParentElement(element, html2ca
 
 If you find another/better way to take a screenshot instead of `html2canvas`, feel free to use it, passing your screenshot to the `curl()` function.
 
-### Prerequisite: Ensure the parent element is a curl container
+### Prerequisite: Ensure the parent element either is the `document.body` or `documentElement`, or has `position: relative`
 
-The element you're curling must have a "curl container" parent element. The parent can either be the `document.body` or any element with `position: relative`.
+Once we capture the screenshot, we'll create a `<canvas>` next to the curling element, with `position: absolute; left: 0; top: 0;`.
 
-(If the parent isn't the body, then parent element must use `position: relative`, because we'll position the curl `<canvas>` with `position: absolute` relative to your element's parent.)
+Despite the name `absolute`, a `position: absolute` element "is positioned relative to its closest positioned ancestor."
+
+If you're animating the `document.body` or `documentElement`, the `<canvas>` will appear at the top-left corner of the screen, which is probably what you want. If you're animating another element, its parent element must have `position: relative`, to ensure that the `<canvas>` appears directly on top of it.
 
 # Curling the page
 
@@ -58,8 +60,10 @@ The `nextPageContent` can either be a string of HTML to set on `element.innerHTM
 
 1. `curl()` will start by converting your `screenshotCanvas` into a WebGL `<canvas>` containing your screenshot on a plane
 2. We'll append that `<canvas>` as a sibling of your `element`, using `position: absolute`, `top: 0, left: 0`, with a `z-index` above your element. (Thus, your element's parent must either be the `document.body` or must have `position: relative`.)
+
    At this point, the user will no longer see your element, but will see a screenshot of your element. (Hopefully the user won't notice, but `html2canvas` is by no means perfect.)
 3. Then, we'll replace the `element`'s content with the `nextPageContent`.
+
    The user won't see your updated content yet, because it's still behind the screenshot.
 4. Then, we'll begin a WebGL animation, curling the `<canvas>` and revealing the updated element behind it.
 5. Finally, we'll remove the `<canvas>` from the DOM and resolve the promise.
