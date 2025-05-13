@@ -48,50 +48,26 @@ void main() {
     // If curlAmount > 0, this is simply the opposite of curlPathDir.
     vec2 axisReferenceDir = -curlPathDir; // normalize(curlStartPos - curlAxisPos) simplified
 
-    // --- 2. Calculate Origin Point on Edge ---
+    // --- 2. Calculate Distances for Scenario Determination (Revised Method) ---
 
-    // Find the point where the axisReferenceDir line, starting from curlAxisPos,
-    // intersects the top edge of the page (y = 1.0).
-    // This is Andrew's 'origin'.
+    // Define a fixed reference point for projections
+    vec2 refPoint = curlStartPos;
 
-    // Vertical distance from curlAxisPos to the top edge (y=1)
-    float vertDistToEdge = 1.0 - curlAxisPos.y;
+    // Calculate vectors from the reference point
+    vec2 fragmentVecFromRef = vUv - refPoint;
+    vec2 curlAxisVecFromRef = curlAxisPos - refPoint;
 
-    // Calculate how many steps along axisReferenceDir are needed to cover that vertical distance.
-    // Avoid division by zero if axisReferenceDir.y is zero (shouldn't happen for BR->TL curl)
-    float stepsToEdge = 0.0;
-    if (abs(axisReferenceDir.y) > 0.0001) {
-         stepsToEdge = vertDistToEdge / axisReferenceDir.y;
-    }
-
-    // Calculate the intersection point on the top edge line
-    vec2 originPointOnEdge = curlAxisPos + axisReferenceDir * stepsToEdge;
-
-    // Clamp the origin point to ensure it stays within the page bounds [0,1]x[0,1]
-    // This prevents issues if curlAxisPos goes way off screen.
-    originPointOnEdge = clamp(originPointOnEdge, 0.0, 1.0);
-
-
-    // --- 3. Calculate Distances for Scenario Determination ---
-
-    // Calculate the distance from the originPointOnEdge to the curlAxisPos.
-    // This corresponds to Andrew's 'mouseDist'.
-    float distCurlAxisFromOrigin = length(curlAxisPos - originPointOnEdge);
-
-    // Calculate the vector from the originPointOnEdge to the current fragment.
-    vec2 fragmentVecFromOrigin = vUv - originPointOnEdge;
-
-    // Project the fragment vector onto the axisReferenceDir to find the distance
-    // of the fragment along that direction, measured from the originPointOnEdge.
-    // This corresponds to Andrew's 'proj'.
-    float distFragmentAlongAxisRefDir = dot(fragmentVecFromOrigin, axisReferenceDir);
+    // Project these vectors onto the axisReferenceDir
+    // distCurlAxisFromOrigin: Projection distance of curlAxisPos from refPoint
+    // distFragmentAlongAxisRefDir: Projection distance of fragment from refPoint
+    float distCurlAxisFromOrigin = dot(curlAxisVecFromRef, axisReferenceDir);
+    float distFragmentAlongAxisRefDir = dot(fragmentVecFromRef, axisReferenceDir);
 
     // Calculate the perpendicular distance of the fragment FROM the curl axis line.
     // Positive values are "ahead" of the curl axis (relative to axisReferenceDir),
     // negative values are "behind".
     // This corresponds to Andrew's 'dist'.
-    // Handle edge case where curlAmount = 0 (curlAxisPos = curlStartPos -> distCurlAxisFromOrigin can be NaN/Inf if originPoint != curlStart)
-    // If curlAmount is near zero, the curl hasn't started, treat all points as Scenario 1.
+    // Handle edge case where curlAmount = 0
     float distFragmentFromCurlAxis = 0.0;
     if (curlAmount < 0.0001) {
         distFragmentFromCurlAxis = radius + 1.0; // Ensure it's > radius -> Scenario 1
