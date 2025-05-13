@@ -32,7 +32,11 @@ void main() {
 
     // Vector representing the full direction and length of the curl animation path
     vec2 curlPathVector = curlEndTargetPos - curlStartPos; // (-1.0, 1.0)
-    float curlPathLength = length(curlPathVector) + radius; // sqrt(2)
+
+    // The path length is the hypotenuse of the curl path vector plus
+    // the radius of the curl cylinder, plus another radius to account for the
+    // shadow that falls on the back side of the page.
+    float curlPathLength = length(curlPathVector) + (radius * 2.0);
     vec2 curlPathDir = normalize(curlPathVector); // Direction from BR to TL
 
     // Calculate the current position of the center of the curl axis based on curlAmount
@@ -92,6 +96,9 @@ void main() {
         // Scenario 1: Ahead of curl, outside the cylinder radius.
         // This area should be transparent, revealing the underlying next page.
         color = vec4(0.0); // Transparent
+        
+        // Cast a shadow if the fragment is within one radius of the curl axis.
+        color.a = 1.0 - pow(clamp((distFragmentFromCurlAxis - radius) / radius, 0., 1.) * 1.5, .2);
     } else if (distFragmentFromCurlAxis >= 0.0) {
         // Scenario 2: On the curl cylinder itself
 
