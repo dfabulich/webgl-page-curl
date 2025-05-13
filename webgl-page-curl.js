@@ -78,9 +78,7 @@ void main() {
 
     // --- 4. Determine Scenario and Calculate Final UV / Color ---
 
-    vec2 finalUV = vUv;
     vec4 color = vec4(0.0); // Default to transparent black
-    bool calculatedColor = false; // Flag to track if color has been set
 
 
     // Check if initial vUv is within bounds before proceeding
@@ -93,13 +91,9 @@ void main() {
     if (distFragmentFromCurlAxis > radius) {
         // Scenario 1: Ahead of curl, outside the cylinder radius.
         // This area should be transparent, revealing the underlying next page.
-        calculatedColor = true;
-        finalUV = vUv; // Use original UV for reference
         color = vec4(0.0); // Transparent
-
     } else if (distFragmentFromCurlAxis >= 0.0) {
         // Scenario 2: On the curl cylinder itself
-        calculatedColor = true; // We will calculate *something* here
 
         // Find the point on the curl axis line closest to the original vUv
         // This is the point from which we measure the angle theta.
@@ -124,15 +118,13 @@ void main() {
 
         if (seeingBack) {
             // Back side coordinates p2 are valid. Sample front texture at p2.
-            finalUV = p2;
-            color = texture2D(frontTexture, finalUV);
+            color = texture2D(frontTexture, p2);
             // Optional: Slightly darken the back face
             color.rgb *= 0.9;
         } else {
             // Seeing the front side (p2 was out of bounds). Use p1.
             // p1 is assumed to be in bounds based on the curl geometry.
-            finalUV = p1;
-            color = texture2D(frontTexture, finalUV);
+            color = texture2D(frontTexture, p1);
             // Add shading based on curl angle (theta) to simulate curvature
             float light = 0.7 + 0.3 * cos(theta); // Simple lighting model
             color.rgb *= light;
@@ -140,7 +132,6 @@ void main() {
 
     } else {
         // Scenario 3: Behind/Under the curl
-        calculatedColor = true;
 
         // Find the point on the curl axis line closest to the original vUv
         vec2 linePoint = vUv - distFragmentFromCurlAxis * axisReferenceDir;
@@ -160,15 +151,6 @@ void main() {
             // If 'p' is out of bounds, use the original fragment UV.
             color = texture2D(frontTexture, vUv);
         }
-        // Sample the front texture with the determined UV.
-        
-    }
-
-    // Final check: Discard if the calculated UV for the visible face ended up out of bounds.
-    // This handles cases where p1 (Scenario 2) or p (Scenario 3) were chosen but landed outside [0,1].
-    // Fragments made transparent (seeingBack in Scen 2, or Scen 1, or Scen 3 with p out of bounds) won't be discarded here.
-    if (calculatedColor && color.a != 0.0 && !isInBounds(finalUV)) {
-       discard;
     }
 
     gl_FragColor = color;
