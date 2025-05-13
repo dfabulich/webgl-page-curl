@@ -1,3 +1,5 @@
+// copied from https://www.shadertoy.com/view/ls3cDB
+
 // Shader inputs:
 uniform vec3      iResolution;           // viewport resolution (in pixels)
 uniform float     iTime;                 // shader playback time (in seconds)

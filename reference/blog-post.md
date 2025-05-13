@@ -1,3 +1,5 @@
+Copied from https://andrewhungblog.wordpress.com/2018/04/29/page-curl-shader-breakdown/
+
 # Page Curl Shader Breakdown – Nudgie Dev Diary
 Page curl is a fairly common effect in e-reader applications. It looks like this:
 
