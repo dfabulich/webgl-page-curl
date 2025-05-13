@@ -424,14 +424,6 @@ export async function curl(args) {
 
     if (state.logging) console.log('Raw WebGL shaders compiled and program linked.');
 
-    // Switch underlying DOM to next page (it's covered by the canvas)
-    if (typeof nextPageContent === 'string') {
-      element.innerHTML = nextPageContent;
-    } else {
-      nextPageContent(element);
-    }
-    if (state.logging) console.log('Underlying DOM switched to next page content.');
-
     // --- IMPORTANT: Setup WebGL resources BEFORE starting animation ----
     const gl = state.gl; // Use a local gl for this setup block for convenience
 
@@ -506,7 +498,16 @@ export async function curl(args) {
     // --- End of WebGL resource setup ---
 
     // Start animation loop
-    requestAnimationFrame(timestamp => animate(timestamp, state));
+    requestAnimationFrame(timestamp => {
+      animate(timestamp, state);
+      // Switch underlying DOM to next page (it's covered by the canvas)
+      if (typeof nextPageContent === 'string') {
+        element.innerHTML = nextPageContent;
+      } else {
+        nextPageContent(element);
+      }
+      if (state.logging) console.log('Underlying DOM switched to next page content.');
+    });
     await promise;
   } finally {
     // Clean up WebGL resources
