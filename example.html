@@ -57,12 +57,12 @@
 
       window.go = async () => {
         const screenshotCanvas = await captureScreenshotOfParentElement(
-          htmlContentDiv,
+          document.body,
           html2canvas,
           { logging: true }
         );
         await curl({
-          element: htmlContentDiv,
+          element: document.body,
           screenshotCanvas: screenshotCanvas,
           nextPageContent: blueHTMLBodyContent,
           durationInMs: 1000,
