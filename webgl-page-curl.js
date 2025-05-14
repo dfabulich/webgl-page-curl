@@ -16,7 +16,6 @@ precision mediump float; // Added default precision for floats
 
 #define PI 3.14159265359
 
-uniform vec2 resolution;      // Viewport resolution (not strictly needed for this logic)
 uniform float curlAmount;     // Animation progress (0.0 to 1.0+, determines curl position)
 uniform float radius;         // Curl radius
 uniform sampler2D frontTexture; // Texture for the front of the page
@@ -204,7 +203,6 @@ function animate(timestamp, state) {
       gl.bindTexture(gl.TEXTURE_2D, state.frontTextureGL);
 
       // Set uniforms
-      gl.uniform2f(state.uniformLocations.resolution, gl.canvas.width, gl.canvas.height);
       gl.uniform1f(state.uniformLocations.curlAmount, state.curlAmount);
       gl.uniform1f(state.uniformLocations.radius, state.curlRadius);
       // frontTexture uniform (sampler) was set to 0 (texture unit) once during init.
