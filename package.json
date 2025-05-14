@@ -35,7 +35,7 @@
   ],
   "devDependencies": {
     "esbuild": "^0.25.4",
-    "esbuild-plugin-glsl": "^1.4.0",
-    "prettier": "^3.5.3"
+    "prettier": "^3.5.3",
+    "shader-minifier-wasm": "^0.1.2"
   }
 }
