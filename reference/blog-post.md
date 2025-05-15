@@ -1,6 +1,7 @@
 Copied from https://andrewhungblog.wordpress.com/2018/04/29/page-curl-shader-breakdown/
 
 # Page Curl Shader Breakdown – Nudgie Dev Diary
+
 Page curl is a fairly common effect in e-reader applications. It looks like this:
 
 ![instapaper-4-2-page-curl-screenshot](https://andrewhungblog.wordpress.com/wp-content/uploads/2018/04/instapaper-4-2-page-curl-screenshot.jpg?w=300&h=400)
@@ -19,8 +20,7 @@ I quickly grew frustrated with trying to reverse-engineer write-only code and de
 
 [Here’s](https://www.shadertoy.com/view/ls3cDB) my implementation on shadertoy. Click and drag on the image to see the effect. I’m not going to go too deep into the code itself in the following explanation since it handles a lot of shader-related minutiae (aspect ratio, clamping, etc) and I’d rather focus on the math, but feel free to leave a comment or reach out to me if you’d like me to elaborate further on the GLSL code.
 
-How the Effect Works
---------------------
+## How the Effect Works
 
 ### High Level Summary
 
@@ -37,15 +37,15 @@ This gives us two sub-problems to solve:
 
 ### Sub-Problem #1: Finding the Curl Axis and the Cylinder
 
-To deform the quad around a cylinder, we need to know the actual location and orientation of the cylinder. This information can be represented in many forms, so it is helpful to consider how we will use this information in sub-problem #2 to determine which form we need it in. The key piece of information we will need is _how far the current fragment is from the curl axis_. This distance alone gives us most of the information we need to choose the correct texture and map the UV in sub-problem #2, so we don’t need to worry about finding the angle of rotation of the cylinder or anything like that. Here’s an illustration of the piece of information that we are trying to find in this step (we’ll call it _d_ from this point onward):
+To deform the quad around a cylinder, we need to know the actual location and orientation of the cylinder. This information can be represented in many forms, so it is helpful to consider how we will use this information in sub-problem #2 to determine which form we need it in. The key piece of information we will need is *how far the current fragment is from the curl axis*. This distance alone gives us most of the information we need to choose the correct texture and map the UV in sub-problem #2, so we don’t need to worry about finding the angle of rotation of the cylinder or anything like that. Here’s an illustration of the piece of information that we are trying to find in this step (we’ll call it _d_ from this point onward):
 
 ![distance_to_find](https://andrewhungblog.wordpress.com/wp-content/uploads/2018/04/distance_to_find.png?w=840)
 
-_d_ is the distance we want to find
+*d* is the distance we want to find
 
-Finding _d_ involves a few different steps. Let’s take it one step at a time.
+Finding *d* involves a few different steps. Let’s take it one step at a time.
 
-First, we’ll want to represent the orientation of the curl axis in a way that makes solving for _d_ easy. To do this, we can simply look at the direction in which the user is dragging the screen. If we find the vector between the point where the user placed his finger on the screen (we’ll call this _clickPos)_ and the point to which he has currently dragged his finger (we’ll call this _dragPos_), we can treat the curl axis as a line that is perpendicular to this vector and passes through the _dragPos_. See these images to gain an intuition for why this makes a good curl axis:
+First, we’ll want to represent the orientation of the curl axis in a way that makes solving for *d* easy. To do this, we can simply look at the direction in which the user is dragging the screen. If we find the vector between the point where the user placed his finger on the screen (we’ll call this *clickPos)* and the point to which he has currently dragged his finger (we’ll call this _dragPos_), we can treat the curl axis as a line that is perpendicular to this vector and passes through the *dragPos*. See these images to gain an intuition for why this makes a good curl axis:
 
 ![curl_dir](https://andrewhungblog.wordpress.com/wp-content/uploads/2018/04/curl_dir.png?w=840)
 
@@ -65,7 +65,7 @@ To find that point, we can calculate the intersection of the lefthand side of th
 
 `vec2 origin = clamp(dragPos - dir * dragPos.x / dir.x, 0., 1.);`
 
-Basically, we’re finding out how many instances of _dir_ fit between _dragPos_ and the lefthand side of the screen. We then subtract by that many instances of _dir_, bringing us right up to that edge. The point that we arrive at is the origin point that we’re looking for. We can then find a vector representing _f_ by simply subtracting the origin point from the fragment position.
+Basically, we’re finding out how many instances of _dir_ fit between *dragPos* and the lefthand side of the screen. We then subtract by that many instances of _dir_, bringing us right up to that edge. The point that we arrive at is the origin point that we’re looking for. We can then find a vector representing *f* by simply subtracting the origin point from the fragment position.
 
 Now that we have the fragment and the direction vector, we can take the dot product to get the distance along the direction vector.
 
@@ -75,7 +75,7 @@ To get the critical piece of information that we need for part #2 (the distance 
 
 `float distOfFragmentFromCurlAxis = distOfFragmentAlongDirectionVector - distOfCurlAxisAlongDirectionVector;`
 
-Since we’re using _dragPos_ as the curl axis position, the distance between _dragPos_ and the origin calculated previously gives us _distOfCurlAxisAlongDirectionVector_. _distOfFragmentAlongDirectionVector_ is the projected distance that we just calculated by taking the dot product. We now have both terms that we need to execute the subtraction and find the distance of the fragment from the curl axis, which is what we need to proceed to sub-problem #2.
+Since we’re using *dragPos* as the curl axis position, the distance between *dragPos* and the origin calculated previously gives us *distOfCurlAxisAlongDirectionVector*. _distOfFragmentAlongDirectionVector_ is the projected distance that we just calculated by taking the dot product. We now have both terms that we need to execute the subtraction and find the distance of the fragment from the curl axis, which is what we need to proceed to sub-problem #2.
 
 ### Sub-Problem #2: Mapping the Point to the Cylinder
 
@@ -122,7 +122,7 @@ The distance to _p2_ is calculated in a similar way, only we replace theta by ![
 ![d2 = \frac{\pi - \theta}{2\pi} * 2\pi r ](https://s0.wp.com/latex.php?latex=d2+%3D+%5Cfrac%7B%5Cpi+-+%5Ctheta%7D%7B2%5Cpi%7D+%2A+2%5Cpi+r+&bg=ffffff&fg=7f8d8c&s=2&c=20201002)  
 ![d2 = (\pi -\theta) * r ](https://s0.wp.com/latex.php?latex=d2+%3D+%28%5Cpi+-%5Ctheta%29+%2A+r+&bg=ffffff&fg=7f8d8c&s=2&c=20201002)
 
-Now that we’ve solved for _d1_ and _d2_, we can find the values of the unrolled _p1_ and _p2_ by multiplying _d1_ and _d2_ by _dir_ and adding each product to the point where the direction vector to the fragment would’ve intersected with the curl axis (we’ll call this point _linePoint_ – you can find it by moving the fragment position towards the curlAxis by _dir_ \* _distOfFragmentFromCurlAxis_, where the latter variable is the critical piece of info we found in sub-problem #1).
+Now that we’ve solved for _d1_ and *d2*, we can find the values of the unrolled *p1* and *p2* by multiplying *d1* and *d2* by *dir* and adding each product to the point where the direction vector to the fragment would’ve intersected with the curl axis (we’ll call this point _linePoint_ – you can find it by moving the fragment position towards the curlAxis by _dir_ \* _distOfFragmentFromCurlAxis_, where the latter variable is the critical piece of info we found in sub-problem #1).
 
 `vec2 linePoint = fragmentPos - distOfFragmentFromCurlAxis * dir;   vec2 p1 = linePoint + dir * d1;   vec2 p2 = linePoint + dir * d2;`
 
@@ -130,7 +130,7 @@ To determine whether to use _p1_ (the front side) or _p2_ (the back side), we si
 
 ![out_of_bounds](https://andrewhungblog.wordpress.com/wp-content/uploads/2018/04/out_of_bounds.png?w=840)
 
-In the above image, we look at the unrolled _p2_ values for several fragments. Because the page is a rectangle, some of the unrolled points will lie beyond the page boundaries. For these fragments, we’ll use _p1_ to get the UV coordinates rather than _p2_, since _p2_ is no longer on the page.
+In the above image, we look at the unrolled *p2* values for several fragments. Because the page is a rectangle, some of the unrolled points will lie beyond the page boundaries. For these fragments, we’ll use *p1* to get the UV coordinates rather than *p2*, since *p2* is no longer on the page.
 
 #### Scenario 3: The fragment is behind the curl axis
 
@@ -146,10 +146,10 @@ Like the previous scenario, we ignore the UV coord for the backside of the page 
 
 And there you have it. To see the nitty gritty implementation details, feel free to check out my [shadertoy implementation](https://www.shadertoy.com/view/ls3cDB). As far as I know, this is about as simple as this effect can get (< 50 lines of code for the whole thing). No crazy mesh deformations or insanely complex math – just a single quad with a bit of trig. There are a few things going on in there that I didn’t go over in this post, since they’re not fundamental to the primary deformation effect:
 
-*   Adding a pseudo-shadow cast by the curled page.
-*   Doing some clamping to make sure the page always stays attached to the “spine” of the book on the lefthand side.
+- Adding a pseudo-shadow cast by the curled page.
+- Doing some clamping to make sure the page always stays attached to the “spine” of the book on the lefthand side.
 
 I’ve pretty much satisfied my curiosity with this effect, but there are a few small additions that I may add to the shader in the future:
 
-*   Anti-aliasing of page edges.
-*   Turning to the previous page (rather than only the next page).
+- Anti-aliasing of page edges.
+- Turning to the previous page (rather than only the next page).

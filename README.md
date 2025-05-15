@@ -62,8 +62,10 @@ The `nextPageContent` can either be a string of HTML to set on `element.innerHTM
 2. We'll append that `<canvas>` as a sibling of your `element`, using `position: absolute`, `top: 0, left: 0`, with a `z-index` above your element. (Thus, your element's parent must either be the `document.body` or must have `position: relative`.)
 
    At this point, the user will no longer see your element, but will see a screenshot of your element. (Hopefully the user won't notice, but `html2canvas` is by no means perfect.)
+
 3. Then, we'll replace the `element`'s content with the `nextPageContent`.
 
    The user won't see your updated content yet, because it's still behind the screenshot.
+
 4. Then, we'll begin a WebGL animation, curling the `<canvas>` and revealing the updated element behind it.
 5. Finally, we'll remove the `<canvas>` from the DOM and resolve the promise.

@@ -312,10 +312,7 @@ export async function curl(args) {
     state.uniformLocations.resolution = gl.getUniformLocation(state.shaderProgram, 'resolution');
     state.uniformLocations.curlAmount = gl.getUniformLocation(state.shaderProgram, 'curlAmount');
     state.uniformLocations.radius = gl.getUniformLocation(state.shaderProgram, 'radius');
-    state.uniformLocations.t = gl.getUniformLocation(
-      state.shaderProgram,
-      't'
-    );
+    state.uniformLocations.t = gl.getUniformLocation(state.shaderProgram, 't');
     if (state.logging) console.log('Uniform locations obtained.');
 
     // --- Set Initial Uniforms (some are set per frame) ---

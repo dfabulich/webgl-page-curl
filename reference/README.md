@@ -12,10 +12,10 @@ Then, we define a `distFragmentFromCurlAxis` (where each fragment is a pixel), w
 
 Each fragment/pixel falls under one of three scenarios:
 
-* Scenario 1: `distFragmentFromCurlAxis > radius` i.e. `distFragmentFromCurlAxis` is positive and greater than the radius of the cylinder, then the curl has already revealed this pixel; show a transparent pixel, revealing the underlying DOM content.
-* Scenario 2: `distFragmentFromCurlAxis >= 0` but not `> radius`. In that case, the point is on the cylinder and being distorted. We must either show the texture point p1 or the mirrored backface texture point p2.
-    * To decide whether to show p1 or p2, we compute how far away p2 would be if the cylinder were unrolled. If the unrolled p2 would fall within the viewport, then show p2; otherwise, show p1.
-* Scenario 3: `distFragmentFromCurlAxis < 0`. At this point, we either show the current texture point (`vUv`), or we show a mirrored backface point `p`. Like Scenario 2, if `p` (when unrolled) would fall within the viewport, we show `p`, and otherwise, we show the current screenshot texture point.
+- Scenario 1: `distFragmentFromCurlAxis > radius` i.e. `distFragmentFromCurlAxis` is positive and greater than the radius of the cylinder, then the curl has already revealed this pixel; show a transparent pixel, revealing the underlying DOM content.
+- Scenario 2: `distFragmentFromCurlAxis >= 0` but not `> radius`. In that case, the point is on the cylinder and being distorted. We must either show the texture point p1 or the mirrored backface texture point p2.
+  - To decide whether to show p1 or p2, we compute how far away p2 would be if the cylinder were unrolled. If the unrolled p2 would fall within the viewport, then show p2; otherwise, show p1.
+- Scenario 3: `distFragmentFromCurlAxis < 0`. At this point, we either show the current texture point (`vUv`), or we show a mirrored backface point `p`. Like Scenario 2, if `p` (when unrolled) would fall within the viewport, we show `p`, and otherwise, we show the current screenshot texture point.
 
 # Differences
 
@@ -24,4 +24,3 @@ Andrew assumes the user controls the curl by dragging a mouse; we simulate the e
 Andrew's blog post called for computing a very strange number he called the `origin` for the purposes of computing `distFragmentFromCurlAxis`. It's not 0,0, it's not a corner, it's not the start or end of the mouse drag, but rather it's the point on the far edge of the canvas in the direction that the user dragged their mouse.
 
 This strange definition of `origin` turned out to be unnecessary. We just use the drag start (curl start) as the `origin`.
-
