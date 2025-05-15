@@ -1,17 +1,27 @@
 import { build } from 'esbuild';
-import { minify as minifyWasm } from 'shader-minifier-wasm';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
-const glslAdvancedMinifyPlugin = {
-  name: 'glsl-advanced-minify',
+const useWasmMinifier = process.env.FAST_BUILD !== 'true';
+
+const glslPlugin = {
+  name: 'glsl-conditional-minify',
   setup(build) {
     build.onLoad({ filter: /\.(vert|frag|glsl)$/ }, async (args) => {
       try {
         const shaderContent = await fs.readFile(args.path, 'utf8');
-        const minifiedShader = await minifyWasm(shaderContent, { preserveExternals: true, format: 'text' }); 
+        let outputShader = shaderContent;
+
+        if (useWasmMinifier) {
+          console.log(`Minifying shader ${args.path} with shader-minifier-wasm...`);
+          const {minifyWasm} = await import('shader-minifier-wasm');
+          outputShader = await minifyWasm(shaderContent, { preserveExternals: true, format: 'text' });
+        } else {
+          console.log(`Skipping WASM minification for shader ${args.path} (FAST_BUILD mode).`);
+        }
+        
         return {
-          contents: `export default \`${minifiedShader}\`;`,
+          contents: `export default \`${outputShader}\`;`,
           loader: 'js',
         };
       } catch (error) {
@@ -35,7 +45,7 @@ async function runBuild() {
       sourcemap: true,
       plugins: [glslAdvancedMinifyPlugin],
     });
-    console.log('Build successful with shader-minifier-wasm!');
+    console.log(`Build successful! ${useWasmMinifier ? 'with shader-minifier-wasm' : '(FAST_BUILD mode, WASM minifier skipped)'}`);
   } catch (error) {
     console.error('Build failed:', error.errors || error);
     process.exit(1);
