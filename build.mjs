@@ -2,8 +2,18 @@ import { build, context as esbuildContext } from 'esbuild';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
-const useWasmMinifier = process.env.FAST_BUILD !== 'true';
+// Determine configuration from environment variables
+const outputFile = process.env.OUTPUT_FILE || 'dist/webgl-page-curl.js';
 const isWatchMode = process.env.WATCH_MODE === 'true';
+
+// Determine minification levels
+let minifyLevel = process.env.MINIFY_LEVEL || 'none'; // 'none', 'js_only', 'full'
+if (isWatchMode) {
+  minifyLevel = 'none'; // Override for watch mode for speed
+}
+
+const esbuildMinifyJS = minifyLevel === 'js_only' || minifyLevel === 'full';
+const useWasmShaderMinifier = minifyLevel === 'full';
 
 const glslPlugin = {
   name: 'glsl-conditional-minify',
@@ -13,12 +23,12 @@ const glslPlugin = {
         const shaderContent = await fs.readFile(args.path, 'utf8');
         let outputShader = shaderContent;
 
-        if (useWasmMinifier) {
+        if (useWasmShaderMinifier) {
           console.log(`Minifying shader ${args.path} with shader-minifier-wasm...`);
           const { minify: minifyWasm } = await import('shader-minifier-wasm');
           outputShader = await minifyWasm(shaderContent, { preserveExternals: true, format: 'text' });
         } else {
-          console.log(`Skipping WASM minification for shader ${args.path} (FAST_BUILD mode).`);
+          console.log(`Skipping WASM shader minification for ${args.path} (minifyLevel: ${minifyLevel}).`);
         }
         
         return {
@@ -39,34 +49,32 @@ async function runBuild() {
   const buildOptions = {
     entryPoints: ['src/webgl-page-curl.js'],
     bundle: true,
-    outfile: 'dist/webgl-page-curl.js',
+    outfile: outputFile,
     format: 'esm',
-    minify: isWatchMode ? false : true,
-    sourcemap: true,
+    minify: esbuildMinifyJS,
+    sourcemap: true, // Always generate sourcemaps, useful for both dev and prod (can be external for prod)
     plugins: [glslPlugin],
   };
 
   try {
     if (isWatchMode) {
-      console.log('Starting esbuild in watch mode...');
+      console.log(`Starting esbuild in watch mode for ${outputFile} (JS Minify: ${esbuildMinifyJS}, Shader Minify: ${useWasmShaderMinifier})...`);
       const ctx = await esbuildContext(buildOptions);
       await ctx.watch();
       console.log('Watching for changes... (Press Ctrl+C to stop)');
-      // Keep the process alive indefinitely for watch mode
-      // This can be done by creating a promise that never resolves.
       await new Promise(() => {}); 
     } else {
+      console.log(`Building ${outputFile} (JS Minify: ${esbuildMinifyJS}, Shader Minify: ${useWasmShaderMinifier})...`);
       const result = await build(buildOptions);
-      console.log(`Build successful! ${useWasmMinifier ? 'with shader-minifier-wasm' : '(FAST_BUILD mode, WASM minifier skipped)'}`);
+      console.log(`Successfully built ${outputFile}`);
       if (result.warnings.length > 0) {
         console.warn('Build warnings:', result.warnings);
       }
     }
   } catch (error) {
-    // Handle errors from both build and context creation/watching
     const errorMessages = error.errors ? error.errors.map(e => e.text).join('\n') : error.message;
     console.error('Build process failed:', errorMessages);
-    if (error.stack && !error.errors) console.error(error.stack); // Log stack if not already in error.errors
+    if (error.stack && !error.errors) console.error(error.stack);
     if (!isWatchMode) {
       process.exit(1);
     }
