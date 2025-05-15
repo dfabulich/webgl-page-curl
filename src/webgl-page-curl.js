@@ -141,7 +141,7 @@ export async function captureScreenshotOfParentElement(
  * @param {(string|Function)} args.nextPageContent - HTML string or function to update the element content after curl.
  * @param {number} [args.durationInMs=1000] - Duration of the animation in milliseconds.
  * @param {boolean} [args.logging=false] - Enable verbose logging.
- * @param {number} [args.curlRadius=0.1] - Radius of the page curl (in normalized coordinates, relative to hypotenuse).
+ * @param {number} [args.curlRadius=0.2] - Radius of the page curl (in normalized coordinates, relative to hypotenuse).
  * @returns {Promise<void>} A promise that resolves when the animation completes.
  * @throws {Error} If required arguments are missing or parent element is not positioned correctly.
  */
