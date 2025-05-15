@@ -35,9 +35,9 @@
   },
   "homepage": "https://github.com/dfabulich/webgl-page-curl#readme",
   "files": [
-    "webgl-page-curl.js",
+    "dist",
     "README.md",
-    "LICENSE"
+    "LICENSE.md"
   ],
   "devDependencies": {
     "esbuild": "^0.25.4",
