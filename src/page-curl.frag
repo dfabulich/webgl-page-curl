@@ -4,7 +4,7 @@ precision mediump float; // Added default precision for floats
 
 uniform float curlAmount;     // Animation progress (0.0 to 1.0+, determines curl position)
 uniform float radius;         // Curl radius
-uniform sampler2D frontTexture; // Texture for the front of the page
+uniform sampler2D t; // Texture for the front of the page
 
 varying vec2 vUv; // Input UV coordinates [0,1]x[0,1]
 
@@ -14,14 +14,17 @@ bool isInBounds(vec2 uvCoords) {
 }
 
 void main() {
+  // use local variables so we can minify them
+  float _curlAmount = curlAmount;
+  float _radius = radius;
   // Check if initial vUv is within bounds before proceeding
   if (!isInBounds(vUv)) {
     discard; // Discard fragments outside the original page area
   }
 
   // If curlAmount is essentially zero, just show the front texture unmodified and opaque.
-  if (curlAmount < 0.0001) {
-    gl_FragColor = texture2D(frontTexture, vUv);
+  if (_curlAmount < 0.0001) {
+    gl_FragColor = texture2D(t, vUv);
     return;
   }
 
@@ -37,12 +40,12 @@ void main() {
   // The path length is the hypotenuse of the curl path vector plus
   // the radius of the curl cylinder, plus another radius to account for the
   // shadow that falls on the back side of the page.
-  float curlPathLength = length(curlPathVector) + (radius * 2.0);
+  float curlPathLength = length(curlPathVector) + (_radius * 2.0);
   vec2 curlPathDir = normalize(curlPathVector); // Direction from BR to TL
 
   // Calculate the current position of the center of the curl axis based on curlAmount
   // This corresponds to 'dragPos' or 'mouse' in Andrew's examples.
-  float curlProgressDist = curlAmount * curlPathLength;
+  float curlProgressDist = _curlAmount * curlPathLength;
   vec2 curlAxisPos = curlStartPos + curlPathDir * curlProgressDist;
 
   // Define the reference direction for distance calculations.
@@ -74,8 +77,8 @@ void main() {
   // This corresponds to Andrew's 'dist'.
   // Handle edge case where curlAmount = 0
   float distFragmentFromCurlAxis = 0.0;
-  if (curlAmount < 0.0001) {
-    distFragmentFromCurlAxis = radius + 1.0; // Ensure it's > radius -> Scenario 1
+  if (_curlAmount < 0.0001) {
+    distFragmentFromCurlAxis = _radius + 1.0; // Ensure it's > radius -> Scenario 1
   } else {
     distFragmentFromCurlAxis = distFragmentAlongAxisRefDir - distCurlAxisFromOrigin;
   }
@@ -86,13 +89,13 @@ void main() {
   vec4 color = vec4(0.0); // Default to transparent black
 
   // Use the calculated distFragmentFromCurlAxis to determine the scenario
-  if (distFragmentFromCurlAxis > radius) {
+  if (distFragmentFromCurlAxis > _radius) {
     // Scenario 1: Ahead of curl, outside the cylinder radius.
     // This area should be transparent, revealing the underlying next page.
     color = vec4(0.0); // Transparent
     
     // Cast a shadow if the fragment is within one radius of the curl axis.
-    color.a = 1.0 - pow(clamp((distFragmentFromCurlAxis - radius) / radius, 0., 1.) * 1.5, .2);
+    color.a = 1.0 - pow(clamp((distFragmentFromCurlAxis - _radius) / _radius, 0., 1.) * 1.5, .2);
   } else if (distFragmentFromCurlAxis >= 0.0) {
     // Scenario 2: On the curl cylinder itself
 
@@ -102,16 +105,16 @@ void main() {
 
     // Calculate the angle theta based on the distance from the axis
     // Clamp input to asin to avoid domain errors due to floating point inaccuracies
-    float asinInput = clamp(distFragmentFromCurlAxis / radius, -1.0, 1.0);
+    float asinInput = clamp(distFragmentFromCurlAxis / _radius, -1.0, 1.0);
     float theta = asin(asinInput);
 
     // Calculate the unrolled UV coordinate for the front face (p1)
-    float distForP1 = theta * radius;
+    float distForP1 = theta * _radius;
     vec2 p1 = linePoint + axisReferenceDir * distForP1;
 
     // Calculate the unrolled UV coordinate for the back face (p2)
     float angleForP2 = PI - theta;
-    float distForP2 = angleForP2 * radius;
+    float distForP2 = angleForP2 * _radius;
     vec2 p2 = linePoint + axisReferenceDir * distForP2;
 
     // Check if the calculated back-face UV (p2) is within the page bounds
@@ -119,13 +122,13 @@ void main() {
 
     if (seeingBack) {
       // Back side coordinates p2 are valid. Sample front texture at p2.
-      color = texture2D(frontTexture, p2);
+      color = texture2D(t, p2);
       // Optional: Slightly darken the back face
       color.rgb *= 0.9;
     } else {
       // Seeing the front side (p2 was out of bounds). Use p1.
       // p1 is assumed to be in bounds based on the curl geometry.
-      color = texture2D(frontTexture, p1);
+      color = texture2D(t, p1);
       // Add shading based on curl angle (theta) to simulate curvature
       float light = 0.7 + 0.3 * cos(theta); // Simple lighting model
       color.rgb *= light;
@@ -140,17 +143,17 @@ void main() {
     // Calculate the unrolled UV coordinate 'p' for the back face.
     // The distance along the unrolled page is half the circumference plus the
     // (negative) distance behind the axis.
-    float distForP = PI * radius + abs(distFragmentFromCurlAxis);
+    float distForP = PI * _radius + abs(distFragmentFromCurlAxis);
     vec2 p = linePoint + axisReferenceDir * distForP;
 
     // Check if the calculated back-face UV (p) is within the page bounds
     if (isInBounds(p)) {
       // Back side coordinate 'p' is valid. Use it for sampling.
-      color = texture2D(frontTexture, p);
+      color = texture2D(t, p);
       color.rgb *= 0.9;
     } else {
       // If 'p' is out of bounds, use the original fragment UV.
-      color = texture2D(frontTexture, vUv);
+      color = texture2D(t, vUv);
     }
   }
 

@@ -312,15 +312,15 @@ export async function curl(args) {
     state.uniformLocations.resolution = gl.getUniformLocation(state.shaderProgram, 'resolution');
     state.uniformLocations.curlAmount = gl.getUniformLocation(state.shaderProgram, 'curlAmount');
     state.uniformLocations.radius = gl.getUniformLocation(state.shaderProgram, 'radius');
-    state.uniformLocations.frontTexture = gl.getUniformLocation(
+    state.uniformLocations.t = gl.getUniformLocation(
       state.shaderProgram,
-      'frontTexture'
+      't'
     );
     if (state.logging) console.log('Uniform locations obtained.');
 
     // --- Set Initial Uniforms (some are set per frame) ---
     gl.useProgram(state.shaderProgram); // Use program before setting uniforms
-    gl.uniform1i(state.uniformLocations.frontTexture, 0); // Tell shader to use texture unit 0 for frontTexture
+    gl.uniform1i(state.uniformLocations.t, 0); // Tell shader to use texture unit 0 for frontTexture
     // Resolution, curlAmount and radius are set in animate loop
     gl.useProgram(null); // Unbind program for now (will be bound in animate)
     // --- End of WebGL resource setup ---
