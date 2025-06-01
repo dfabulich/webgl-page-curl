@@ -199,17 +199,16 @@ export async function curl(args) {
       );
     }
 
-    const rect = parentElement.getBoundingClientRect();
-    const width = rect.width;
-    const height = rect.height;
+    const width = screenshotCanvas.width;
+    const height = screenshotCanvas.height;
     const dpr = window.devicePixelRatio || 1;
 
     if (state.logging) console.log({ width, height, dpr });
 
     // Create canvas and get WebGL context
     state.canvas = document.createElement('canvas');
-    state.canvas.width = width * dpr; // Set backing store size
-    state.canvas.height = height * dpr; // Set backing store size
+    state.canvas.width = width; // Set backing store size
+    state.canvas.height = height; // Set backing store size
 
     // Attempt to get WebGL2 first, fallback to WebGL1
     // Request alpha for transparency, antialias can be true/false based on preference/performance
@@ -234,8 +233,8 @@ export async function curl(args) {
       position: 'absolute',
       top: '0',
       left: '0',
-      width: `${width}px`,
-      height: `${height}px`,
+      width: `${width / dpr}px`,
+      height: `${height / dpr}px`,
       zIndex: canvasZIndex,
       pointerEvents: 'none',
       backgroundColor: 'transparent', // Ensure CSS background is also transparent
