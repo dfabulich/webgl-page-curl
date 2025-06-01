@@ -137,7 +137,7 @@ export async function captureScreenshotOfParentElement(
  *
  * @param {Object} args - The arguments object.
  * @param {HTMLElement} args.element - The element to apply the curl effect to.
- * @param {HTMLCanvasElement} args.screenshotCanvas - The canvas containing the screenshot of the element.
+ * @param {HTMLCanvasElement|HTMLImageElement} args.screenshotCanvas - The canvas/image containing the screenshot of the element.
  * @param {(string|Function)} args.nextPageContent - HTML string or function to update the element content after curl.
  * @param {number} [args.durationInMs=1000] - Duration of the animation in milliseconds.
  * @param {boolean} [args.logging=false] - Enable verbose logging.
