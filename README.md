@@ -69,3 +69,12 @@ The `nextPageContent` can either be a string of HTML to set on `element.innerHTM
 
 4. Then, we'll begin a WebGL animation, curling the `<canvas>` and revealing the updated element behind it.
 5. Finally, we'll remove the `<canvas>` from the DOM and resolve the promise.
+
+## Adjusting the curl shape
+
+You can set other curl parameters, too. Try playing around with these to see how they feel.
+
+- `curlRadius`: The curl functions as if a cylinder were rolling over the page, with a radius you provide. The default is 0.2.
+- `startX`/`startY`: We start curling from this point. In the X coordinate, 1.0 is right, 0.0 is left. In the Y coordinate, 1.0 is top, 0.0 is bottom. The curl starts at 1, 0 by default, the lower-right corner.
+- `endX`/`endY`: We'll curl the cylinder toward this end point. The curl ends at 0, 1 by default, the upper-left corner.
+  - Especially try playing around with `endX`. If you want to peel the page up and away, try setting `endX` closer to 1.0.

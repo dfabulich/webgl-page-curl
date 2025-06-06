@@ -4,6 +4,8 @@ precision mediump float; // Added default precision for floats
 
 uniform float curlAmount;     // Animation progress (0.0 to 1.0+, determines curl position)
 uniform float radius;         // Curl radius
+uniform vec2 start;          // Start position of the curl
+uniform vec2 end;            // End position of the curl
 uniform sampler2D t; // Texture for the front of the page
 
 varying vec2 vUv; // Input UV coordinates [0,1]x[0,1]
@@ -17,6 +19,8 @@ void main() {
   // use local variables so we can minify them
   float _curlAmount = curlAmount;
   float _radius = radius;
+  vec2 curlStartPos = start;
+  vec2 curlEndTargetPos = end;
   // Check if initial vUv is within bounds before proceeding
   if (!isInBounds(vUv)) {
     discard; // Discard fragments outside the original page area
@@ -31,8 +35,8 @@ void main() {
   // --- 1. Define Curl Geometry based on curlAmount ---
 
   // Define the start and end points of the curl path in UV space
-  vec2 curlStartPos = vec2(1.0, 0.0); // Bottom-Right corner
-  vec2 curlEndTargetPos = vec2(0.0, 1.0); // Top-Left corner
+  // vec2 curlStartPos = vec2(1.0, 0.0); // Bottom-Right corner
+  // vec2 curlEndTargetPos = vec2(0.0, 1.0); // Top-Left corner
 
   // Vector representing the full direction and length of the curl animation path
   vec2 curlPathVector = curlEndTargetPos - curlStartPos; // (-1.0, 1.0)

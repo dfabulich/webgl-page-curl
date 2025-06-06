@@ -34,6 +34,8 @@ function animate(timestamp, state) {
       // Set uniforms
       gl.uniform1f(state.uniformLocations.curlAmount, state.curlAmount);
       gl.uniform1f(state.uniformLocations.radius, state.curlRadius);
+      gl.uniform2f(state.uniformLocations.start, state.startX, state.startY);
+      gl.uniform2f(state.uniformLocations.end, state.endX, state.endY);
       // frontTexture uniform (sampler) was set to 0 (texture unit) once during init.
 
       // Draw the quad
@@ -142,6 +144,10 @@ export async function captureScreenshotOfParentElement(
  * @param {number} [args.durationInMs=1000] - Duration of the animation in milliseconds.
  * @param {boolean} [args.logging=false] - Enable verbose logging.
  * @param {number} [args.curlRadius=0.2] - Radius of the page curl (in normalized coordinates, relative to hypotenuse).
+ * @param {number} [args.startX=1.0] - The x-coordinate of the start of the curl (1.0 is right, 0.0 is left).
+ * @param {number} [args.startY=0.0] - The y-coordinate of the start of the curl (1.0 is top, 0.0 is bottom).
+ * @param {number} [args.endX=0.0] - The x-coordinate of the end of the curl (1.0 is right, 0.0 is left).
+ * @param {number} [args.endY=1.0] - The y-coordinate of the end of the curl (1.0 is top, 0.0 is bottom).
  * @returns {Promise<void>} A promise that resolves when the animation completes.
  * @throws {Error} If required arguments are missing or parent element is not positioned correctly.
  */
@@ -171,6 +177,10 @@ export async function curl(args) {
     durationInMs: args.durationInMs ?? 1000,
     curlAmount: 0.0, // Current state of the curl animation
     curlRadius: args.curlRadius ?? 0.2, // Retain for shader uniform later
+    startX: args.startX ?? 1.0,
+    startY: args.startY ?? 0.0,
+    endX: args.endX ?? 0.0,
+    endY: args.endY ?? 1.0,
     startTime: null,
     // WebGL specific state
     canvas: null, // Will hold our new canvas element
@@ -312,6 +322,8 @@ export async function curl(args) {
     state.uniformLocations.curlAmount = gl.getUniformLocation(state.shaderProgram, 'curlAmount');
     state.uniformLocations.radius = gl.getUniformLocation(state.shaderProgram, 'radius');
     state.uniformLocations.t = gl.getUniformLocation(state.shaderProgram, 't');
+    state.uniformLocations.start = gl.getUniformLocation(state.shaderProgram, 'start');
+    state.uniformLocations.end = gl.getUniformLocation(state.shaderProgram, 'end');
     if (state.logging) console.log('Uniform locations obtained.');
 
     // --- Set Initial Uniforms (some are set per frame) ---
