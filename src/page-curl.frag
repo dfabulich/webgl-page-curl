@@ -38,9 +38,8 @@ void main() {
   vec2 curlPathVector = curlEndTargetPos - curlStartPos; // (-1.0, 1.0)
 
   // The path length is the hypotenuse of the curl path vector plus
-  // the radius of the curl cylinder, plus another radius to account for the
-  // shadow that falls on the back side of the page.
-  float curlPathLength = length(curlPathVector) + (_radius * 2.0);
+  // half the circumference of the curl cylinder.
+  float curlPathLength = length(curlPathVector) + (_radius * PI);
   vec2 curlPathDir = normalize(curlPathVector); // Direction from BR to TL
 
   // Calculate the current position of the center of the curl axis based on curlAmount
