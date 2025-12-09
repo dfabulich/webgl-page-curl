@@ -59,8 +59,29 @@ function animate(timestamp, state) {
 }
 
 // Helper function to compile a shader
-function compileShader(gl, source, type) {
+function compileShader(gl, source, type, logging) {
   const shader = gl.createShader(type);
+  if (logging || !shader) {
+    const debugInfo = {};
+    try {
+      debugInfo.glError = gl.getError();
+      const contextLost = gl.isContextLost();
+      debugInfo.contextLost = contextLost;
+      if (!contextLost) {
+        const debugExt = gl.getExtension('WEBGL_debug_renderer_info');
+        if (debugExt) {
+          debugInfo.renderer = gl.getParameter(debugExt.UNMASKED_RENDERER_WEBGL);
+        }
+      }
+    } catch (e) {
+      debugInfo.debugError = e.message;
+    }
+    if (shader) {
+      console.log(`Successfully created ${type} shader, ${JSON.stringify(debugInfo)}`);
+    } else {
+      throw new Error(`Failed to create ${type} shader. ${JSON.stringify(debugInfo)}`);
+    }
+  }
   gl.shaderSource(shader, source);
   gl.compileShader(shader);
   if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
@@ -74,9 +95,9 @@ function compileShader(gl, source, type) {
 }
 
 // Helper function to create (link) a shader program
-function createShaderProgram(gl, vsSource, fsSource) {
-  const vertexShader = compileShader(gl, vsSource, gl.VERTEX_SHADER);
-  const fragmentShader = compileShader(gl, fsSource, gl.FRAGMENT_SHADER);
+function createShaderProgram(gl, vsSource, fsSource, logging) {
+  const vertexShader = compileShader(gl, vsSource, gl.VERTEX_SHADER, logging);
+  const fragmentShader = compileShader(gl, fsSource, gl.FRAGMENT_SHADER, logging);
 
   const program = gl.createProgram();
   gl.attachShader(program, vertexShader);
@@ -253,7 +274,12 @@ export async function curl(args) {
 
     // Compile shaders and link program
     try {
-      state.shaderProgram = createShaderProgram(state.gl, vertexShaderSource, fragmentShaderSource);
+      state.shaderProgram = createShaderProgram(
+        state.gl,
+        vertexShaderSource,
+        fragmentShaderSource,
+        state.logging
+      );
     } catch (shaderError) {
       console.error('Shader Compilation/Linking Error:', shaderError);
       throw shaderError; // Re-throw to be caught by outer try-finally
